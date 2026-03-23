@@ -1,0 +1,18 @@
+[project]
+name = "data_analytics_engine"
+version = "0.1.0"
+description = "A data analytics engine project."
+requires-python = ">=3.13"
+dependencies = [
+    "langchain>=1.2.11",
+    "langchain-core>=1.2.18",
+    "langchain-ollama>=1.0.1",
+    "langgraph>=1.1.0",
+    "matplotlib>=3.10.8",
+    "pandas>=3.0.1",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.2",
+]
+
+[tool.poetry]
+# Add dependencies here
