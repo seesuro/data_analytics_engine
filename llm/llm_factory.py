@@ -1,8 +1,8 @@
 # LLM factory implementation
 from langchain.chat_models import init_chat_model
+from typing import Optional
 
-
-def get_llm(provider: str = "local", model: str = None):
+def get_llm(provider: str = "local", model: Optional[str] = None):
 
     if provider == "openai":
         return init_chat_model(
