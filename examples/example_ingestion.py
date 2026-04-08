@@ -11,9 +11,9 @@ from ingestion.data_ingestor import DataIngestor
 from storage.db_manager import DBManager
 import json
 from config.settings import METADATA_PATH
-
-db_path = "data/analytics.db"
-db_manager = DBManager(db_path)
+from config.settings import DB_PATH
+# db_path = "data/analytics.db"
+db_manager = DBManager(DB_PATH)
 ingestor = DataIngestor(db_manager)
 ingestor.ingest_file("data/sales.csv")
 ingestor.meta.save()  # Ensure metadata is saved after ingestion
@@ -32,7 +32,7 @@ graph = build_graph()
 
 
 
-query = "What is the total revenue by region?"
+query = "What is the data available?"
 
 initial_state = {
     "user_query": query,
