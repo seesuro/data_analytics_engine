@@ -31,6 +31,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `reporting_agent.py`: summarizes results with the configured LLM.
 - `app/`
   - `main.py`: FastAPI app factory.
+  - `routes/datasets.py`: dataset upload endpoint backed by project-aware ingestion.
   - `routes/projects.py`: project create, list, and lookup endpoints.
 - `config/`
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
@@ -117,6 +118,13 @@ Run the API locally:
 ```bash
 uv run uvicorn app.main:app --reload
 ```
+
+Current API endpoints:
+
+- `POST /projects`
+- `GET /projects`
+- `GET /projects/{project_id_or_slug}`
+- `POST /projects/{project_id_or_slug}/datasets`
 
 Run tests and coverage:
 

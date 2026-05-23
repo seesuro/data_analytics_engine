@@ -34,7 +34,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 ## Epic E - FastAPI Backend
 
 - [x] Add project create/list endpoints.
-- [ ] Add dataset upload endpoint.
+- [x] Add dataset upload endpoint.
 - [ ] Add chat/run endpoint using the in-process engine.
 - [ ] Add run result and artifact fetch endpoints.
 
