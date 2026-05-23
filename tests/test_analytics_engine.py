@@ -1,0 +1,37 @@
+from pathlib import Path
+
+from engine.analytics_engine import AnalyticsEngine
+
+
+class _FakeGraph:
+    def __init__(self):
+        self.received_state = None
+
+    def invoke(self, state):
+        self.received_state = state
+        return {**state, "report": "done"}
+
+
+def test_analytics_engine_builds_initial_state():
+    graph = _FakeGraph()
+    engine = AnalyticsEngine(graph=graph)
+    db = object()
+    metadata = {"tables": {"sales": {"columns": {"region": "VARCHAR"}}}}
+
+    out = engine.run("total revenue", db=db, metadata=metadata)
+
+    assert graph.received_state["user_query"] == "total revenue"
+    assert graph.received_state["db"] is db
+    assert graph.received_state["metadata"] == metadata
+    assert graph.received_state["artifacts"] == []
+    assert "artifact_dir" not in graph.received_state
+    assert out["report"] == "done"
+
+
+def test_analytics_engine_accepts_artifact_dir(tmp_path):
+    graph = _FakeGraph()
+    engine = AnalyticsEngine(graph=graph)
+
+    engine.run("total revenue", db=object(), metadata={}, artifact_dir=Path(tmp_path))
+
+    assert graph.received_state["artifact_dir"] == str(tmp_path)

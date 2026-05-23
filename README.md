@@ -34,6 +34,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `contracts/`
   - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, and artifacts.
 - `engine/`
+  - `analytics_engine.py`: caller-facing wrapper around the LangGraph workflow.
   - `sql_policy.py`: SQL guardrails for SELECT-only, single-statement queries with row-limit capping.
 - `graph/`
   - `analytics_graph.py`: LangGraph workflow wiring.
@@ -92,6 +93,8 @@ For analytical questions, the engine:
 For project-aware ingestion, metadata is written to DuckDB registry tables. The older `metadata.json` flow remains for legacy examples but should not be the long-term source of truth.
 
 For schema/meta questions, the router can call database methods directly and skip planning.
+
+`AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, and an optional artifact directory, then returns the final graph state.
 
 ## Running Locally
 
