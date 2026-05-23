@@ -14,8 +14,8 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Use `var/projects/<project_id>/db.duckdb` for each project.
 - [x] Prepare raw upload directory under `var/projects/<project_id>/raw/`.
 - [x] Prepare artifacts directory under `var/projects/<project_id>/artifacts/`.
-- [ ] Save raw uploads under `var/projects/<project_id>/raw/`.
-- [ ] Add per-project write locking for ingestion.
+- [x] Save raw uploads under `var/projects/<project_id>/raw/`.
+- [x] Add per-project write locking for ingestion.
 
 ## Epic C - DuckDB Registry
 

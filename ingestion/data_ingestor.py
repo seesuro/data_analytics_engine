@@ -57,14 +57,15 @@ class DataIngestor:
     def table_name(self, path: str):
         return Path(path).stem.lower().replace(" ", "_")
 
-    def ingest_file(self, path: str):
+    def ingest_file(self, path: str, table_name: str | None = None):
         df = self.load_file(path)
         df = normalize_column_names(df)
         df = infer_types(df)
 
-        table = self.table_name(path)
+        table = table_name or self.table_name(path)
         self.db.create_table(table, df)
         self.meta.register(table, df)
+        return table, len(df)
 
     def ingest(self, files: List[str]):
         for f in files:

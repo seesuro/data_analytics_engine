@@ -1,6 +1,9 @@
 import json
 import re
+from contextlib import contextmanager
 from pathlib import Path
+from threading import Lock
+from typing import Iterator
 from uuid import UUID, uuid4
 
 from config.settings import PROJECTS_ROOT
@@ -8,6 +11,8 @@ from contracts import Project
 
 
 class ProjectStore:
+    _locks: dict[str, Lock] = {}
+
     def __init__(self, root: str | Path = PROJECTS_ROOT):
         self.root = Path(root)
         self.index_path = self.root / "index.json"
@@ -57,6 +62,16 @@ class ProjectStore:
 
     def artifacts_dir(self, project: Project) -> Path:
         return project.path / "artifacts"
+
+    @contextmanager
+    def write_lock(self, project: Project) -> Iterator[None]:
+        lock_key = str(project.project_id)
+        lock = self._locks.setdefault(lock_key, Lock())
+        lock.acquire()
+        try:
+            yield
+        finally:
+            lock.release()
 
     @staticmethod
     def slugify(value: str) -> str:
