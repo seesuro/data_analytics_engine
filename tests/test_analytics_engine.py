@@ -45,3 +45,13 @@ def test_analytics_engine_accepts_injected_llm():
     engine.run("total revenue", db=object(), metadata={}, llm=llm)
 
     assert graph.received_state["llm"] is llm
+
+
+def test_analytics_engine_sets_sql_repair_defaults():
+    graph = _FakeGraph()
+    engine = AnalyticsEngine(graph=graph)
+
+    engine.run("total revenue", db=object(), metadata={}, max_sql_repair_attempts=2)
+
+    assert graph.received_state["sql_repair_attempts"] == 0
+    assert graph.received_state["max_sql_repair_attempts"] == 2

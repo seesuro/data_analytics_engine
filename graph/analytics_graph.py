@@ -9,6 +9,7 @@ from agents.visualization_agent import visualization_agent
 from agents.reporting_agent import reporting_agent
 from agents.sql_agent import sql_agent
 from agents.intent_router import intent_router
+from agents.sql_repair_agent import sql_repair_agent
 
 
 def build_graph():
@@ -18,6 +19,7 @@ def build_graph():
     graph.add_node("planner", planner_agent)
     graph.add_node("analysis", analysis_agent)
     graph.add_node("sql", sql_agent)
+    graph.add_node("sql_repair", sql_repair_agent)
     graph.add_node("viz", visualization_agent)
     graph.add_node("report", reporting_agent)
 
@@ -34,7 +36,14 @@ def build_graph():
     graph.add_conditional_edges("intent_router", intent_edge)
     graph.add_edge("planner", "analysis")
     graph.add_edge("analysis", "sql")
-    graph.add_edge("sql", "viz")
+
+    def sql_edge(state):
+        if state.get("sql_error") and state.get("sql_repair_attempts", 0) < state.get("max_sql_repair_attempts", 1):
+            return "sql_repair"
+        return "viz"
+
+    graph.add_conditional_edges("sql", sql_edge)
+    graph.add_edge("sql_repair", "sql")
     graph.add_edge("viz", "report")
 
     return graph.compile()

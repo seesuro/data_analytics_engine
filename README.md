@@ -86,7 +86,7 @@ The current LangGraph flow is:
 
 ```text
 intent_router -> (planner | viz)
-planner -> analysis -> sql -> viz -> report
+planner -> analysis -> sql -> (sql_repair -> sql | viz) -> report
 ```
 
 For analytical questions, the engine:
@@ -95,8 +95,9 @@ For analytical questions, the engine:
 2. Generates SQL from the plan and metadata.
 3. Applies SQL policy checks before execution.
 4. Executes the SQL through `DBManager`.
-5. Produces a chart artifact when an artifact directory is available.
-6. Produces a report.
+5. Repairs failed SQL once using the DuckDB error and schema metadata.
+6. Produces a chart artifact when an artifact directory is available.
+7. Produces a report.
 
 For project-aware ingestion, metadata is written to DuckDB registry tables. The older `metadata.json` flow remains for legacy examples but should not be the long-term source of truth.
 

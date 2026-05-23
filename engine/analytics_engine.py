@@ -16,12 +16,15 @@ class AnalyticsEngine:
         metadata: dict,
         artifact_dir: str | Path | None = None,
         llm: Any | None = None,
+        max_sql_repair_attempts: int = 1,
     ) -> AnalyticsState:
         state: AnalyticsState = {
             "user_query": question,
             "db": db,
             "metadata": metadata,
             "artifacts": [],
+            "sql_repair_attempts": 0,
+            "max_sql_repair_attempts": max_sql_repair_attempts,
         }
         if artifact_dir is not None:
             state["artifact_dir"] = str(artifact_dir)

@@ -10,6 +10,8 @@ class AnalyticsState(TypedDict, total=False):
     report: str
     intent: str
     sql_error: str
+    sql_repair_attempts: int
+    max_sql_repair_attempts: int
     artifact_dir: str
     artifacts: list[Any]
     llm: Any

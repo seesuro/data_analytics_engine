@@ -30,6 +30,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add a caller-facing engine wrapper for injected DB, metadata, and artifact paths.
 - [x] Make visualization create artifacts or chart specs instead of calling `plt.show()`.
 - [x] Add SQL policy checks: SELECT-only, single statement, and row limits.
+- [x] Add bounded SQL repair loop for failed SQL execution.
 - [x] Add deterministic golden-flow tests with a stub LLM and DuckDB fixture.
 
 ## Epic E - FastAPI Backend
