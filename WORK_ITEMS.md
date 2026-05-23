@@ -19,9 +19,9 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 
 ## Epic C - DuckDB Registry
 
-- [ ] Create project-local registry tables: `__datasets`, `__tables`, and `__runs`.
-- [ ] Replace generated `metadata.json` with metadata read from DuckDB.
-- [ ] Add tests for registry initialization and metadata reconstruction.
+- [x] Create project-local registry tables: `__datasets`, `__tables`, and `__runs`.
+- [x] Replace generated `metadata.json` with metadata read from DuckDB for project-aware ingestion.
+- [x] Add tests for registry initialization and metadata reconstruction.
 
 ## Epic D - Engine Refactor
 

@@ -6,6 +6,7 @@ from uuid import UUID
 from contracts import Dataset, DatasetStatus
 from ingestion.data_ingestor import DataIngestor
 from storage.db_manager import DBManager
+from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
 
 
@@ -38,9 +39,11 @@ class ProjectIngestionService:
                 dataset.table_name = table_name
                 dataset.row_count = row_count
                 dataset.status = DatasetStatus.READY
+                DuckDBRegistry(db).register_dataset(dataset)
             except Exception as exc:
                 dataset.status = DatasetStatus.FAILED
                 dataset.error = str(exc)
+                DuckDBRegistry(db).register_dataset(dataset)
             finally:
                 db.close()
 

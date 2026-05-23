@@ -6,6 +6,7 @@ import pytest
 from contracts import DatasetStatus
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
+from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
 
 
@@ -30,6 +31,10 @@ def test_project_ingestion_saves_raw_file_and_ingests_to_project_db(tmp_path):
     try:
         result = db.run_query("SELECT SUM(revenue) AS total_revenue FROM sales")
         assert result.loc[0, "total_revenue"] == 300
+
+        metadata = DuckDBRegistry(db).metadata()
+        assert metadata["tables"]["sales"]["row_count"] == 2
+        assert set(metadata["tables"]["sales"]["columns"]) == {"order_id", "region", "revenue"}
     finally:
         db.close()
 
@@ -55,6 +60,26 @@ def test_project_ingestion_raises_for_missing_source(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         ProjectIngestionService(store).ingest_file(project.project_id, tmp_path / "missing.csv")
+
+
+def test_project_ingestion_registers_failed_dataset(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "notes.txt"
+    source.write_text("not tabular", encoding="utf-8")
+
+    dataset = ProjectIngestionService(store).ingest_file(project.project_id, source)
+
+    assert dataset.status == DatasetStatus.FAILED
+    assert dataset.error == "Unsupported file"
+
+    db = DBManager(str(store.project_db_path(project)))
+    try:
+        datasets = DuckDBRegistry(db).list_datasets()
+        assert datasets.loc[0, "status"] == "failed"
+        assert datasets.loc[0, "error"] == "Unsupported file"
+    finally:
+        db.close()
 
 
 def test_project_store_write_lock_serializes_access(tmp_path):

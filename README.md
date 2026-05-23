@@ -40,6 +40,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `project_ingestion.py`: saves raw files into a project folder and ingests them into that project's DuckDB database.
 - `storage/`
   - `db_manager.py`: thin DuckDB wrapper for table creation and queries.
+  - `duckdb_registry.py`: creates and writes project-local registry tables for datasets, tables, and runs.
   - `project_store.py`: manages project creation, UUID/slug lookup, project directories, and per-project write locks.
 - `tests/`
   - Unit and smoke tests run by `uv run pytest`.
@@ -60,6 +61,14 @@ var/
 
 `ProjectStore` creates and looks up projects. `ProjectIngestionService` copies the uploaded source file into `raw/`, computes a content hash, and ingests the table into that project's `db.duckdb`.
 
+Each project DuckDB file also owns its registry state:
+
+- `__datasets`: uploaded file metadata, content hashes, status, raw path, and ingestion errors.
+- `__tables`: table name, schema JSON, row count, and source dataset.
+- `__runs`: future analysis run records, SQL payloads, result previews, reports, and errors.
+
+`DuckDBRegistry.metadata()` reconstructs the schema metadata needed by the analysis agent from `__tables`.
+
 ## End-to-End Workflow
 
 The current LangGraph flow is:
@@ -76,6 +85,8 @@ For analytical questions, the engine:
 3. Executes the SQL through `DBManager`.
 4. Produces a visualization.
 5. Produces a report.
+
+For project-aware ingestion, metadata is written to DuckDB registry tables. The older `metadata.json` flow remains for legacy examples but should not be the long-term source of truth.
 
 For schema/meta questions, the router can call database methods directly and skip planning.
 
