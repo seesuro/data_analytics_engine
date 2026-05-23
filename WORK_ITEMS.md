@@ -4,14 +4,16 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 
 ## Epic A - Contracts
 
-- [ ] Define project, dataset, run, chat, result preview, and artifact contracts.
+- [x] Define project, dataset, run, chat, result preview, and artifact contracts.
 - [ ] Use contracts at engine and API boundaries.
-- [ ] Add tests for contract defaults, validation, and serialization.
+- [x] Add tests for contract defaults, validation, and serialization.
 
 ## Epic B - Project Storage
 
-- [ ] Implement `ProjectStore` for create, list, and lookup by UUID or slug.
-- [ ] Use `var/projects/<project_id>/db.duckdb` for each project.
+- [x] Implement `ProjectStore` for create, list, and lookup by UUID or slug.
+- [x] Use `var/projects/<project_id>/db.duckdb` for each project.
+- [x] Prepare raw upload directory under `var/projects/<project_id>/raw/`.
+- [x] Prepare artifacts directory under `var/projects/<project_id>/artifacts/`.
 - [ ] Save raw uploads under `var/projects/<project_id>/raw/`.
 - [ ] Add per-project write locking for ingestion.
 

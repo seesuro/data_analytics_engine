@@ -17,3 +17,4 @@ htmlcov/
 *.duckdb
 *.db
 metadata.json
+var/
