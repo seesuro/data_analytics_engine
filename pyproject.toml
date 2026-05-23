@@ -27,6 +27,7 @@ addopts = [
     "-q",
     "--cov=agents",
     "--cov=config",
+    "--cov=contracts",
     "--cov=graph",
     "--cov=ingestion",
     "--cov=llm",

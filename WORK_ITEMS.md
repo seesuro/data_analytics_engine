@@ -1,0 +1,49 @@
+# Work Items
+
+This file tracks the product build without timeboxed sprints. Keep items small enough that each completed item can be tested and committed cleanly.
+
+## Epic A - Contracts
+
+- [ ] Define project, dataset, run, chat, result preview, and artifact contracts.
+- [ ] Use contracts at engine and API boundaries.
+- [ ] Add tests for contract defaults, validation, and serialization.
+
+## Epic B - Project Storage
+
+- [ ] Implement `ProjectStore` for create, list, and lookup by UUID or slug.
+- [ ] Use `var/projects/<project_id>/db.duckdb` for each project.
+- [ ] Save raw uploads under `var/projects/<project_id>/raw/`.
+- [ ] Add per-project write locking for ingestion.
+
+## Epic C - DuckDB Registry
+
+- [ ] Create project-local registry tables: `__datasets`, `__tables`, and `__runs`.
+- [ ] Replace generated `metadata.json` with metadata read from DuckDB.
+- [ ] Add tests for registry initialization and metadata reconstruction.
+
+## Epic D - Engine Refactor
+
+- [ ] Inject LLM, datastore, and artifact dependencies into agent execution.
+- [ ] Make visualization create artifacts or chart specs instead of calling `plt.show()`.
+- [ ] Add SQL policy checks: SELECT-only, single statement, and row limits.
+- [ ] Add deterministic golden-flow tests with a stub LLM and DuckDB fixture.
+
+## Epic E - FastAPI Backend
+
+- [ ] Add project create/list endpoints.
+- [ ] Add dataset upload endpoint.
+- [ ] Add chat/run endpoint using the in-process engine.
+- [ ] Add run result and artifact fetch endpoints.
+
+## Epic F - HTMX UI
+
+- [ ] Add project picker and project creation view.
+- [ ] Add upload form.
+- [ ] Add chat and run result view.
+- [ ] Add basic run history.
+
+## Epic G - Quality Gates
+
+- [x] Configure `uv run pytest` with coverage reporting.
+- [x] Fail tests when total coverage is below 90%.
+- [ ] Add end-to-end golden tests for upload to answer flow.
