@@ -27,7 +27,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `planner_agent.py`: turns a user query into an analysis plan.
   - `analysis_agent.py`: converts a plan and metadata into one SQL query.
   - `sql_agent.py`: executes SQL against DuckDB.
-  - `visualization_agent.py`: produces a simple visualization from results.
+  - `visualization_agent.py`: produces a chart artifact from results when an artifact directory is provided.
   - `reporting_agent.py`: summarizes results with the configured LLM.
 - `config/`
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
@@ -86,7 +86,7 @@ For analytical questions, the engine:
 2. Generates SQL from the plan and metadata.
 3. Applies SQL policy checks before execution.
 4. Executes the SQL through `DBManager`.
-5. Produces a visualization.
+5. Produces a chart artifact when an artifact directory is available.
 6. Produces a report.
 
 For project-aware ingestion, metadata is written to DuckDB registry tables. The older `metadata.json` flow remains for legacy examples but should not be the long-term source of truth.

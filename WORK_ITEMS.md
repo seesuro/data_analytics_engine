@@ -26,7 +26,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 ## Epic D - Engine Refactor
 
 - [ ] Inject LLM, datastore, and artifact dependencies into agent execution.
-- [ ] Make visualization create artifacts or chart specs instead of calling `plt.show()`.
+- [x] Make visualization create artifacts or chart specs instead of calling `plt.show()`.
 - [x] Add SQL policy checks: SELECT-only, single statement, and row limits.
 - [ ] Add deterministic golden-flow tests with a stub LLM and DuckDB fixture.
 

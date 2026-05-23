@@ -10,5 +10,7 @@ class AnalyticsState(TypedDict, total=False):
     report: str
     intent: str
     sql_error: str
+    artifact_dir: str
+    artifacts: list[Any]
     db: Any  # DBManager instance
     metadata: dict  # Metadata dictionary

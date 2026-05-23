@@ -65,3 +65,15 @@ def test_visualization_agent_list_tables_prints(capsys):
     assert "Tables available" in captured
     assert "t1" in captured
     assert "t2" in captured
+
+
+def test_visualization_agent_saves_chart_artifact(tmp_path):
+    df = pd.DataFrame({"region": ["East", "West"], "revenue": [100, 200]})
+
+    out = visualization_agent({"result": df, "artifact_dir": tmp_path})
+
+    assert len(out["artifacts"]) == 1
+    artifact = out["artifacts"][0]
+    assert artifact.artifact_type == "chart"
+    assert artifact.mime_type == "image/png"
+    assert artifact.path.exists()

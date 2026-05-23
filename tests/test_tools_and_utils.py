@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pandas as pd
 
 from tools.pandas_tools import summarize_df
-from tools.plotting_tools import plot_bar
+from tools.plotting_tools import plot_bar, save_bar_chart
 from utils.debug import debug_state
 
 
@@ -24,10 +24,19 @@ def test_plot_bar_does_not_require_gui(monkeypatch):
     plot_bar(df, "a", "b")
 
 
+def test_save_bar_chart_creates_artifact(tmp_path):
+    df = pd.DataFrame({"a": ["u", "v"], "b": [1, 2]})
+
+    artifact = save_bar_chart(df, "a", "b", tmp_path)
+
+    assert artifact.artifact_type == "chart"
+    assert artifact.mime_type == "image/png"
+    assert artifact.path.exists()
+
+
 def test_debug_state_handles_unprintable():
     class _BadStr:
         def __str__(self):
             raise ValueError("nope")
 
     debug_state("stage", {"ok": 1, "bad": _BadStr()})
-
