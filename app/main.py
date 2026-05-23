@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.routes.chat import router as chat_router
 from app.routes.datasets import router as datasets_router
 from app.routes.projects import router as projects_router
+from app.routes.runs import router as runs_router
 from storage.project_store import ProjectStore
 
 
@@ -12,6 +13,7 @@ def create_app(project_store: ProjectStore | None = None) -> FastAPI:
     app.include_router(chat_router)
     app.include_router(projects_router)
     app.include_router(datasets_router)
+    app.include_router(runs_router)
     return app
 
 

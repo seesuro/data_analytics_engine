@@ -34,6 +34,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `main.py`: FastAPI app factory.
   - `routes/datasets.py`: dataset upload endpoint backed by project-aware ingestion.
   - `routes/projects.py`: project create, list, and lookup endpoints.
+  - `routes/runs.py`: run listing/detail endpoints and project artifact file serving.
 - `config/`
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
 - `contracts/`
@@ -128,6 +129,9 @@ Current API endpoints:
 - `GET /projects/{project_id_or_slug}`
 - `POST /projects/{project_id_or_slug}/datasets`
 - `POST /chat`
+- `GET /projects/{project_id_or_slug}/runs`
+- `GET /projects/{project_id_or_slug}/runs/{run_id}`
+- `GET /projects/{project_id_or_slug}/artifacts/{filename}`
 
 Run tests and coverage:
 

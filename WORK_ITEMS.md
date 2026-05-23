@@ -36,7 +36,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add project create/list endpoints.
 - [x] Add dataset upload endpoint.
 - [x] Add chat/run endpoint using the in-process engine.
-- [ ] Add run result and artifact fetch endpoints.
+- [x] Add run result and artifact fetch endpoints.
 
 ## Epic F - HTMX UI
 

@@ -1,8 +1,9 @@
 import json
+from uuid import UUID
 
 import pandas as pd
 
-from contracts import Dataset, Run
+from contracts import Dataset, ResultPreview, Run, RunStatus, SqlRun
 from storage.db_manager import DBManager
 
 
@@ -151,6 +152,13 @@ class DuckDBRegistry:
         self.initialize()
         return self.db.run_query("SELECT * FROM __runs ORDER BY created_at")
 
+    def get_run(self, run_id: str | UUID) -> Run:
+        self.initialize()
+        rows = self.db.conn.execute("SELECT * FROM __runs WHERE run_id = ?", [str(run_id)]).fetchdf()
+        if rows.empty:
+            raise KeyError(f"Run not found: {run_id}")
+        return self._row_to_run(rows.iloc[0].to_dict())
+
     def metadata(self) -> dict:
         tables = {}
         for row in self.list_registered_tables().to_dict(orient="records"):
@@ -166,3 +174,19 @@ class DuckDBRegistry:
             row["column_name"]: row["column_type"]
             for row in described[["column_name", "column_type"]].to_dict(orient="records")
         }
+
+    def _row_to_run(self, row: dict) -> Run:
+        sql_json = row.get("sql_json")
+        result_preview_json = row.get("result_preview_json")
+        return Run(
+            run_id=row["run_id"],
+            project_id=row["project_id"],
+            question=row["question"],
+            status=RunStatus(row["status"]),
+            sql_run=SqlRun.model_validate_json(sql_json) if sql_json else None,
+            result_preview=ResultPreview.model_validate_json(result_preview_json) if result_preview_json else None,
+            report=row.get("report"),
+            error=row.get("error"),
+            created_at=row["created_at"],
+            completed_at=row.get("completed_at"),
+        )
