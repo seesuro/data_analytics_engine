@@ -5,6 +5,12 @@ from utils.debug import debug_state
 def reporting_agent(state):
     llm = resolve_llm(state)
     debug_state("Reporting Agent Input", state)
+    sql_error = state.get("sql_error")
+    if sql_error:
+        state["report"] = f"SQL execution failed: {sql_error}"
+        debug_state("Reporting Agent Output", state)
+        return state
+
     # Format DataFrame result for LLM if needed
     result = state.get("result")
     if result is not None:
@@ -21,10 +27,24 @@ def reporting_agent(state):
         result_str = "No result available."
 
     prompt = f"""
-    Summarize the analysis result:
+You are a concise data analyst writing a final answer for a user.
 
-    {result_str}
-    """
+User question:
+{state.get('user_query', '')}
+
+SQL executed:
+{state.get('sql_query', '')}
+
+Result table:
+{result_str}
+
+Write a short answer grounded only in the result table.
+Rules:
+- Mention the key finding first.
+- Include relevant numbers exactly as shown.
+- Do not invent causes, recommendations, or missing context.
+- If the result is empty or unavailable, say that clearly.
+"""
 
     response = llm.invoke(prompt)
     state["report"] = response.content

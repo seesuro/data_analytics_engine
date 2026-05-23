@@ -12,15 +12,26 @@ def analysis_agent(state):
 
 
     prompt = f"""
-    Convert the plan into a single deterministic SQL query.
-    Use the following metadata for table and column names:
-    {metadata_str}
+You generate DuckDB SQL for an analytics engine.
 
-    Plan:
-    {state['plan']}
+User question:
+{state.get('user_query', '')}
 
-    IMPORTANT: Output ONLY the SQL query, with NO explanations, comments, or markdown formatting. Do not use code fences. The output must be valid SQL that can be executed directly.
-    """
+Schema metadata:
+{metadata_str}
+
+Analysis plan:
+{state['plan']}
+
+Rules:
+- Output exactly one DuckDB SELECT query and nothing else.
+- Do not use markdown, comments, prose, or code fences.
+- Use only table and column names from the schema metadata.
+- Prefer explicit column aliases for aggregations.
+- Use GROUP BY when selecting dimensions with aggregations.
+- Do not use INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, COPY, PRAGMA, or multiple statements.
+- Do not add a trailing semicolon.
+"""
 
 
     response = llm.invoke(prompt)

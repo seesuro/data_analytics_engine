@@ -2,6 +2,9 @@
 from langchain.chat_models import init_chat_model
 from typing import Any, Optional
 
+DEFAULT_LOCAL_MODEL = "qwen2.5"
+
+
 def get_llm(provider: str = "local", model: Optional[str] = None):
 
     if provider == "openai":
@@ -18,7 +21,7 @@ def get_llm(provider: str = "local", model: Optional[str] = None):
 
     elif provider == "local":
         return init_chat_model(
-            model=model or "mistral",
+            model=model or DEFAULT_LOCAL_MODEL,
             model_provider="ollama"
         )
 

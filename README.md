@@ -16,6 +16,7 @@ The project is moving toward a single-machine web application that can scale lat
 - Project layout: `var/projects/<project_id>/db.duckdb`, `raw/`, and `artifacts/`.
 - Identity model: UUIDs for stable internal IDs, plus human-readable project slugs and names.
 - Contracts: Pydantic models in `contracts/` define project, dataset, run, chat, preview, and artifact shapes.
+- Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
 
 Runtime project data under `var/` is intentionally ignored by git.
@@ -121,6 +122,8 @@ Run the API locally:
 ```bash
 uv run uvicorn app.main:app --reload
 ```
+
+The default local LLM is `qwen2.5` because it is a good fit for instruction following and SQL generation among the currently available Ollama models on the development machine.
 
 Current API endpoints:
 

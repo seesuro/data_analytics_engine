@@ -1,4 +1,4 @@
-from llm.llm_factory import get_llm
+from llm.llm_factory import DEFAULT_LOCAL_MODEL, get_llm
 
 
 def test_get_llm_branches(monkeypatch):
@@ -21,6 +21,19 @@ def test_get_llm_branches(monkeypatch):
     ]
 
 
+def test_get_llm_uses_qwen_as_default_local_model(monkeypatch):
+    calls = []
+
+    def _fake_init_chat_model(*, model: str, model_provider: str):
+        calls.append((model, model_provider))
+        return {"model": model, "provider": model_provider}
+
+    monkeypatch.setattr("llm.llm_factory.init_chat_model", _fake_init_chat_model)
+
+    assert get_llm()["model"] == DEFAULT_LOCAL_MODEL
+    assert calls == [(DEFAULT_LOCAL_MODEL, "ollama")]
+
+
 def test_get_llm_invalid_provider_raises():
     try:
         get_llm(provider="nope")
@@ -28,4 +41,3 @@ def test_get_llm_invalid_provider_raises():
         assert "Unsupported provider" in str(e)
     else:
         raise AssertionError("Expected ValueError")
-

@@ -8,17 +8,23 @@ def intent_router(state):
     debug_state("Intent Router Input", state)
 
     llm = resolve_llm(state)
+    metadata = state.get("metadata", {})
+    table_names = sorted(metadata.get("tables", {}).keys())
     prompt = f"""
-    Classify the following user query into one of these intents:
-    - list_tables: if the user wants to see what tables or data are available
-    - describe_table: if the user wants to see the schema or columns of a specific table
-    - analysis: for all other analytical or data questions
+You classify user requests for a DuckDB analytics assistant.
 
-    User query: \"{query}\"
+Allowed intents:
+- list_tables: user asks what datasets/tables are available.
+- describe_table:<table_name>: user asks for columns/schema/data dictionary for one table.
+- analysis: user asks for calculations, comparisons, trends, aggregations, filters, rankings, or business answers.
 
-    Respond with only the intent name (list_tables, describe_table, or analysis).
-    If describe_table, also extract the table name as: describe_table:<table_name>
-    """
+Known tables: {table_names}
+User query: {query}
+
+Output exactly one line and nothing else.
+If the user asks to describe a table, output describe_table:<table_name> using one known table name.
+Otherwise output exactly list_tables or analysis.
+"""
 
     response = llm.invoke(prompt)
     intent_line = response.content.strip().lower()
