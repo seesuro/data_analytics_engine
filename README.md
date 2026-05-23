@@ -33,6 +33,8 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
 - `contracts/`
   - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, and artifacts.
+- `engine/`
+  - `sql_policy.py`: SQL guardrails for SELECT-only, single-statement queries with row-limit capping.
 - `graph/`
   - `analytics_graph.py`: LangGraph workflow wiring.
 - `ingestion/`
@@ -82,9 +84,10 @@ For analytical questions, the engine:
 
 1. Plans the analysis.
 2. Generates SQL from the plan and metadata.
-3. Executes the SQL through `DBManager`.
-4. Produces a visualization.
-5. Produces a report.
+3. Applies SQL policy checks before execution.
+4. Executes the SQL through `DBManager`.
+5. Produces a visualization.
+6. Produces a report.
 
 For project-aware ingestion, metadata is written to DuckDB registry tables. The older `metadata.json` flow remains for legacy examples but should not be the long-term source of truth.
 
@@ -120,4 +123,5 @@ The examples under `examples/` still show the earlier direct-DuckDB flow. They w
 - Keep FastAPI and UI code outside the engine.
 - Keep agents testable with dependency injection.
 - Keep storage behind small adapters, starting with DuckDB.
+- Keep generated SQL constrained to SELECT-only, single-statement queries.
 - Return previews and artifact references to the UI instead of full dataframes.

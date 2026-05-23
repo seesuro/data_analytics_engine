@@ -5,7 +5,11 @@ from agents.visualization_agent import visualization_agent
 
 
 class _OkDB:
+    def __init__(self):
+        self.query = None
+
     def run_query(self, _sql: str):
+        self.query = _sql
         return pd.DataFrame({"x": [1], "y": [2]})
 
 
@@ -15,10 +19,20 @@ class _FailDB:
 
 
 def test_sql_agent_success_sets_result_and_clears_error():
-    state = {"db": _OkDB(), "sql_query": "SELECT 1"}
+    db = _OkDB()
+    state = {"db": db, "sql_query": "SELECT 1"}
     out = sql_agent(state)
     assert isinstance(out["result"], pd.DataFrame)
     assert out["sql_error"] is None
+    assert out["sql_query"] == "SELECT 1 LIMIT 500"
+    assert db.query == "SELECT 1 LIMIT 500"
+
+
+def test_sql_agent_rejects_non_select_query():
+    state = {"db": _OkDB(), "sql_query": "DROP TABLE sales"}
+    out = sql_agent(state)
+    assert out["result"] is None
+    assert "Only SELECT queries" in out["sql_error"]
 
 
 def test_sql_agent_failure_sets_error():
@@ -51,4 +65,3 @@ def test_visualization_agent_list_tables_prints(capsys):
     assert "Tables available" in captured
     assert "t1" in captured
     assert "t2" in captured
-

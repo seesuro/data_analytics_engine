@@ -38,6 +38,5 @@ def test_graph_runs_analysis_path(monkeypatch):
     out = graph.invoke(state)
 
     assert out["intent"] == "analysis"
-    assert out["sql_query"].strip() == "SELECT 1"
+    assert out["sql_query"].strip() == "SELECT 1 LIMIT 500"
     assert out["report"] == "summary"
-
