@@ -8,11 +8,14 @@ from storage.project_store import ProjectStore
 
 
 class _StubLLM:
-    def __init__(self, content: str):
-        self._content = content
+    def __init__(self, responses: list[str]):
+        self._responses = responses
+        self._index = 0
 
     def invoke(self, _prompt: str):
-        return SimpleNamespace(content=self._content)
+        content = self._responses[self._index]
+        self._index += 1
+        return SimpleNamespace(content=content)
 
 
 def test_golden_upload_to_answer_flow(tmp_path, monkeypatch):
@@ -35,18 +38,14 @@ def test_golden_upload_to_answer_flow(tmp_path, monkeypatch):
     try:
         metadata = DuckDBRegistry(db).metadata()
 
-        monkeypatch.setattr("agents.intent_router.get_llm", lambda: _StubLLM("analysis"))
-        monkeypatch.setattr("agents.planner_agent.get_llm", lambda: _StubLLM("Aggregate revenue by region."))
-        monkeypatch.setattr(
-            "agents.analysis_agent.get_llm",
-            lambda: _StubLLM(
+        llm = _StubLLM(
+            [
+                "analysis",
+                "Aggregate revenue by region.",
                 "SELECT region, SUM(revenue) AS total_revenue "
-                "FROM sales GROUP BY region ORDER BY region"
-            ),
-        )
-        monkeypatch.setattr(
-            "agents.reporting_agent.get_llm",
-            lambda: _StubLLM("East generated 250 and West generated 200."),
+                "FROM sales GROUP BY region ORDER BY region",
+                "East generated 250 and West generated 200.",
+            ]
         )
 
         out = AnalyticsEngine().run(
@@ -54,6 +53,7 @@ def test_golden_upload_to_answer_flow(tmp_path, monkeypatch):
             db=db,
             metadata=metadata,
             artifact_dir=store.artifacts_dir(project),
+            llm=llm,
         )
 
         assert out["intent"] == "analysis"

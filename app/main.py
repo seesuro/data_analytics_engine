@@ -7,9 +7,10 @@ from app.routes.runs import router as runs_router
 from storage.project_store import ProjectStore
 
 
-def create_app(project_store: ProjectStore | None = None) -> FastAPI:
+def create_app(project_store: ProjectStore | None = None, llm=None) -> FastAPI:
     app = FastAPI(title="Data Analytics Engine")
     app.state.project_store = project_store or ProjectStore()
+    app.state.llm = llm
     app.include_router(chat_router)
     app.include_router(projects_router)
     app.include_router(datasets_router)

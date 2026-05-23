@@ -1,9 +1,9 @@
 # Analysis agent implementation
-from llm.llm_factory import get_llm
+from llm.llm_factory import resolve_llm
 from utils.debug import debug_state
 import json
 def analysis_agent(state):
-    llm = get_llm()
+    llm = resolve_llm(state)
     debug_state("Analysis Agent Input", state)
 
     # Use metadata in the prompt for deterministic SQL

@@ -6,11 +6,14 @@ from graph.analytics_graph import build_graph
 
 
 class _StubLLM:
-    def __init__(self, content: str):
-        self._content = content
+    def __init__(self, responses: list[str]):
+        self._responses = responses
+        self._index = 0
 
     def invoke(self, _prompt: str):
-        return SimpleNamespace(content=self._content)
+        content = self._responses[self._index]
+        self._index += 1
+        return SimpleNamespace(content=content)
 
 
 class _StubDB:
@@ -25,16 +28,16 @@ class _StubDB:
 
 
 def test_graph_runs_analysis_path(monkeypatch):
-    # intent_router -> analysis path, analysis_agent -> SQL, reporting_agent -> summary
-    monkeypatch.setattr("agents.intent_router.get_llm", lambda: _StubLLM("analysis"))
-    monkeypatch.setattr("agents.analysis_agent.get_llm", lambda: _StubLLM("SELECT 1"))
-    monkeypatch.setattr("agents.reporting_agent.get_llm", lambda: _StubLLM("summary"))
-
     # Avoid opening a GUI plot during tests
     monkeypatch.setattr("agents.visualization_agent.plot_bar", lambda *_args, **_kwargs: None)
 
     graph = build_graph()
-    state = {"user_query": "total revenue by region", "db": _StubDB(), "metadata": {"tables": {}}}
+    state = {
+        "user_query": "total revenue by region",
+        "db": _StubDB(),
+        "metadata": {"tables": {}},
+        "llm": _StubLLM(["analysis", "plan", "SELECT 1", "summary"]),
+    }
     out = graph.invoke(state)
 
     assert out["intent"] == "analysis"

@@ -19,22 +19,17 @@ class _StubDB:
         return {"table": table_name}
 
 
-def test_intent_router_list_tables(monkeypatch):
-    monkeypatch.setattr("agents.intent_router.get_llm", lambda: _StubLLM("list_tables"))
-
-    state = {"user_query": "what tables exist?", "db": _StubDB()}
+def test_intent_router_list_tables():
+    state = {"user_query": "what tables exist?", "db": _StubDB(), "llm": _StubLLM("list_tables")}
     out = intent_router(state)
 
     assert out["intent"] == "list_tables"
     assert out["result"] == [("t1",), ("t2",)]
 
 
-def test_intent_router_describe_table_with_name(monkeypatch):
-    monkeypatch.setattr("agents.intent_router.get_llm", lambda: _StubLLM("describe_table:sales"))
-
-    state = {"user_query": "describe sales", "db": _StubDB()}
+def test_intent_router_describe_table_with_name():
+    state = {"user_query": "describe sales", "db": _StubDB(), "llm": _StubLLM("describe_table:sales")}
     out = intent_router(state)
 
     assert out["intent"] == "describe_table"
     assert out["result"] == {"table": "sales"}
-

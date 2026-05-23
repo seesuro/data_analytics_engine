@@ -35,3 +35,13 @@ def test_analytics_engine_accepts_artifact_dir(tmp_path):
     engine.run("total revenue", db=object(), metadata={}, artifact_dir=Path(tmp_path))
 
     assert graph.received_state["artifact_dir"] == str(tmp_path)
+
+
+def test_analytics_engine_accepts_injected_llm():
+    graph = _FakeGraph()
+    engine = AnalyticsEngine(graph=graph)
+    llm = object()
+
+    engine.run("total revenue", db=object(), metadata={}, llm=llm)
+
+    assert graph.received_state["llm"] is llm

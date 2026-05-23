@@ -11,29 +11,32 @@ from storage.project_store import ProjectStore
 
 
 class _StubLLM:
-    def __init__(self, content: str):
-        self._content = content
+    def __init__(self, responses: list[str]):
+        self._responses = responses
+        self._index = 0
 
     def invoke(self, _prompt: str):
-        return SimpleNamespace(content=self._content)
+        content = self._responses[self._index]
+        self._index += 1
+        return SimpleNamespace(content=content)
 
 
-def test_chat_api_runs_engine_and_persists_run(tmp_path, monkeypatch):
+def test_chat_api_runs_engine_and_persists_run(tmp_path):
     store = ProjectStore(tmp_path / "projects")
     project = store.create_project("Retail Demo")
     source = tmp_path / "sales.csv"
     source.write_text("Order ID,Region,Revenue\n1,East,100\n2,West,200\n", encoding="utf-8")
     ProjectIngestionService(store).ingest_file(project.project_slug, source)
 
-    monkeypatch.setattr("agents.intent_router.get_llm", lambda: _StubLLM("analysis"))
-    monkeypatch.setattr("agents.planner_agent.get_llm", lambda: _StubLLM("Aggregate revenue by region."))
-    monkeypatch.setattr(
-        "agents.analysis_agent.get_llm",
-        lambda: _StubLLM("SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region ORDER BY region"),
+    llm = _StubLLM(
+        [
+            "analysis",
+            "Aggregate revenue by region.",
+            "SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region ORDER BY region",
+            "Done.",
+        ]
     )
-    monkeypatch.setattr("agents.reporting_agent.get_llm", lambda: _StubLLM("Done."))
-
-    client = TestClient(create_app(store))
+    client = TestClient(create_app(store, llm=llm))
     response = client.post(
         "/chat",
         json={"project_id": str(project.project_id), "message": "Revenue by region", "preview_limit": 1},

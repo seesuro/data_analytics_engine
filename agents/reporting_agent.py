@@ -1,9 +1,9 @@
 # Reporting agent implementation
-from llm.llm_factory import get_llm
+from llm.llm_factory import resolve_llm
 from utils.debug import debug_state
 
 def reporting_agent(state):
-    llm = get_llm()
+    llm = resolve_llm(state)
     debug_state("Reporting Agent Input", state)
     # Format DataFrame result for LLM if needed
     result = state.get("result")

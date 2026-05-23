@@ -11,13 +11,7 @@ class _StubLLM:
         return SimpleNamespace(content=self._content)
 
 
-def test_analysis_agent_strips_sql_code_fences(monkeypatch):
-    monkeypatch.setattr(
-        "agents.analysis_agent.get_llm",
-        lambda: _StubLLM("```sql\nSELECT 1 AS one;\n```"),
-    )
-
-    state = {"plan": "Any plan", "metadata": {"tables": {}}}
+def test_analysis_agent_strips_sql_code_fences():
+    state = {"plan": "Any plan", "metadata": {"tables": {}}, "llm": _StubLLM("```sql\nSELECT 1 AS one;\n```")}
     out = analysis_agent(state)
     assert out["sql_query"].strip() == "SELECT 1 AS one;"
-

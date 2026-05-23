@@ -1,13 +1,13 @@
 # Intent router agent for schema/meta queriess
 from utils.debug import debug_state
-from llm.llm_factory import get_llm
+from llm.llm_factory import resolve_llm
 
 def intent_router(state):
     query = state["user_query"]
     db = state["db"]
     debug_state("Intent Router Input", state)
 
-    llm = get_llm()
+    llm = resolve_llm(state)
     prompt = f"""
     Classify the following user query into one of these intents:
     - list_tables: if the user wants to see what tables or data are available

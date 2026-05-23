@@ -12,5 +12,6 @@ class AnalyticsState(TypedDict, total=False):
     sql_error: str
     artifact_dir: str
     artifacts: list[Any]
+    llm: Any
     db: Any  # DBManager instance
     metadata: dict  # Metadata dictionary

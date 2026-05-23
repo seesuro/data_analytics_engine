@@ -1,6 +1,6 @@
 # LLM factory implementation
 from langchain.chat_models import init_chat_model
-from typing import Optional
+from typing import Any, Optional
 
 def get_llm(provider: str = "local", model: Optional[str] = None):
 
@@ -24,3 +24,7 @@ def get_llm(provider: str = "local", model: Optional[str] = None):
 
     else:
         raise ValueError("Unsupported provider")
+
+
+def resolve_llm(state: dict[str, Any]):
+    return state.get("llm") or get_llm()

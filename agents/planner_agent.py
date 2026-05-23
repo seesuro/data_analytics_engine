@@ -1,8 +1,8 @@
 # Planner agent implementation
-from llm.llm_factory import get_llm
+from llm.llm_factory import resolve_llm
 from utils.debug import debug_state
 def planner_agent(state):
-    llm = get_llm()
+    llm = resolve_llm(state)
     debug_state("Planner Agent Input", state)
     prompt = f"""
     You are a data planner.

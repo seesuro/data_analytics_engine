@@ -15,6 +15,7 @@ class AnalyticsEngine:
         db: Any,
         metadata: dict,
         artifact_dir: str | Path | None = None,
+        llm: Any | None = None,
     ) -> AnalyticsState:
         state: AnalyticsState = {
             "user_query": question,
@@ -24,5 +25,7 @@ class AnalyticsEngine:
         }
         if artifact_dir is not None:
             state["artifact_dir"] = str(artifact_dir)
+        if llm is not None:
+            state["llm"] = llm
 
         return self.graph.invoke(state)

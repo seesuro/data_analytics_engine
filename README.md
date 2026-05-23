@@ -101,7 +101,7 @@ For project-aware ingestion, metadata is written to DuckDB registry tables. The 
 
 For schema/meta questions, the router can call database methods directly and skip planning.
 
-`AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, and an optional artifact directory, then returns the final graph state.
+`AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM, then returns the final graph state.
 
 ## Running Locally
 

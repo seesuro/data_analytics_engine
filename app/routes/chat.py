@@ -31,6 +31,7 @@ def chat(payload: ChatRequest, request: Request) -> ChatResponse:
             db=db,
             metadata=registry.metadata(),
             artifact_dir=store.artifacts_dir(project),
+            llm=request.app.state.llm,
         )
         response = state_to_chat_response(
             state=state,
