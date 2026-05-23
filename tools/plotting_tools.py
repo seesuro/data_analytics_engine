@@ -2,6 +2,9 @@
 from pathlib import Path
 from uuid import uuid4
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from contracts import ArtifactRef

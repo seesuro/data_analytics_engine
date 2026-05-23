@@ -30,6 +30,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `visualization_agent.py`: produces a chart artifact from results when an artifact directory is provided.
   - `reporting_agent.py`: summarizes results with the configured LLM.
 - `app/`
+  - `routes/chat.py`: in-process chat/run endpoint backed by `AnalyticsEngine`.
   - `main.py`: FastAPI app factory.
   - `routes/datasets.py`: dataset upload endpoint backed by project-aware ingestion.
   - `routes/projects.py`: project create, list, and lookup endpoints.
@@ -39,6 +40,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, and artifacts.
 - `engine/`
   - `analytics_engine.py`: caller-facing wrapper around the LangGraph workflow.
+  - `run_mapper.py`: converts graph state into `ChatResponse` and run records.
   - `sql_policy.py`: SQL guardrails for SELECT-only, single-statement queries with row-limit capping.
 - `graph/`
   - `analytics_graph.py`: LangGraph workflow wiring.
@@ -125,6 +127,7 @@ Current API endpoints:
 - `GET /projects`
 - `GET /projects/{project_id_or_slug}`
 - `POST /projects/{project_id_or_slug}/datasets`
+- `POST /chat`
 
 Run tests and coverage:
 
