@@ -4,3 +4,12 @@ venv/
 .env
 # Ignore vscode settings
 .vscode/
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+
+# Local databases / generated metadata
+*.duckdb
+*.db
+metadata.json
