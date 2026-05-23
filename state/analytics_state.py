@@ -7,5 +7,8 @@ class AnalyticsState(TypedDict, total=False):
     plan: str
     sql_query: str
     result: Any
+    report: str
+    intent: str
+    sql_error: str
     db: Any  # DBManager instance
     metadata: dict  # Metadata dictionary

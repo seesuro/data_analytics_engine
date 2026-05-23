@@ -1,5 +1,6 @@
 # Ignore Python virtual environment folders
 venv/
+.venv/
 #Ignore .env file
 .env
 # Ignore vscode settings
@@ -8,6 +9,9 @@ venv/
 # Python bytecode / caches
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Local databases / generated metadata
 *.duckdb

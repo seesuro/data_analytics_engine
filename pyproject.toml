@@ -2,7 +2,7 @@
 name = "data_analytics_engine"
 version = "0.1.0"
 description = "A data analytics engine project."
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "duckdb>=1.5.1",
     "langchain>=1.2.11",
@@ -12,8 +12,28 @@ dependencies = [
     "matplotlib>=3.10.8",
     "pandas>=3.0.1",
     "pydantic>=2.12.5",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.0.0",
     "python-dotenv>=1.2.2",
 ]
 
 [tool.poetry]
 # Add dependencies here
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+    "-q",
+    "--cov=agents",
+    "--cov=config",
+    "--cov=graph",
+    "--cov=ingestion",
+    "--cov=llm",
+    "--cov=state",
+    "--cov=storage",
+    "--cov=tools",
+    "--cov=utils",
+    "--cov-report=term-missing",
+    "--cov-fail-under=90",
+]
