@@ -5,7 +5,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 ## Epic A - Contracts
 
 - [x] Define project, dataset, run, chat, result preview, and artifact contracts.
-- [ ] Use contracts at engine and API boundaries.
+- [x] Use contracts at engine and API boundaries for project routes.
 - [x] Add tests for contract defaults, validation, and serialization.
 
 ## Epic B - Project Storage
@@ -33,7 +33,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 
 ## Epic E - FastAPI Backend
 
-- [ ] Add project create/list endpoints.
+- [x] Add project create/list endpoints.
 - [ ] Add dataset upload endpoint.
 - [ ] Add chat/run endpoint using the in-process engine.
 - [ ] Add run result and artifact fetch endpoints.

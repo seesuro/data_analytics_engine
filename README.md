@@ -29,6 +29,9 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `sql_agent.py`: executes SQL against DuckDB.
   - `visualization_agent.py`: produces a chart artifact from results when an artifact directory is provided.
   - `reporting_agent.py`: summarizes results with the configured LLM.
+- `app/`
+  - `main.py`: FastAPI app factory.
+  - `routes/projects.py`: project create, list, and lookup endpoints.
 - `config/`
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
 - `contracts/`
@@ -107,6 +110,12 @@ Install dependencies:
 
 ```bash
 uv sync
+```
+
+Run the API locally:
+
+```bash
+uv run uvicorn app.main:app --reload
 ```
 
 Run tests and coverage:

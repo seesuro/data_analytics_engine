@@ -5,6 +5,7 @@ description = "A data analytics engine project."
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "duckdb>=1.5.1",
+    "fastapi>=0.124.0",
     "langchain>=1.2.11",
     "langchain-core>=1.2.18",
     "langchain-ollama>=1.0.1",
@@ -15,6 +16,7 @@ dependencies = [
     "pytest>=8.4.0",
     "pytest-cov>=6.0.0",
     "python-dotenv>=1.2.2",
+    "uvicorn>=0.38.0",
 ]
 
 [tool.poetry]
@@ -26,6 +28,7 @@ pythonpath = ["."]
 addopts = [
     "-q",
     "--cov=agents",
+    "--cov=app",
     "--cov=config",
     "--cov=contracts",
     "--cov=engine",
