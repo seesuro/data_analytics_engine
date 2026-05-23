@@ -117,6 +117,8 @@ uv run pytest
 
 The test suite fails if total coverage is below 90%.
 
+The golden-flow test covers the current core product path: create a project, ingest a CSV, read DuckDB registry metadata, run the analytics engine with stubbed LLM responses, execute SQL, save a chart artifact, and return a report.
+
 ## Legacy Examples
 
 The examples under `examples/` still show the earlier direct-DuckDB flow. They will be updated as the project-aware ingestion and future FastAPI/HTMX interface are built out.

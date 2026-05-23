@@ -29,7 +29,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add a caller-facing engine wrapper for injected DB, metadata, and artifact paths.
 - [x] Make visualization create artifacts or chart specs instead of calling `plt.show()`.
 - [x] Add SQL policy checks: SELECT-only, single statement, and row limits.
-- [ ] Add deterministic golden-flow tests with a stub LLM and DuckDB fixture.
+- [x] Add deterministic golden-flow tests with a stub LLM and DuckDB fixture.
 
 ## Epic E - FastAPI Backend
 
@@ -49,4 +49,4 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 
 - [x] Configure `uv run pytest` with coverage reporting.
 - [x] Fail tests when total coverage is below 90%.
-- [ ] Add end-to-end golden tests for upload to answer flow.
+- [x] Add end-to-end golden tests for upload to answer flow.
