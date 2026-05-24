@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Path, Request, status
 from fastapi.responses import FileResponse
 
-from contracts import ChatMessage, Run
+from contracts import ChatMessage, Run, RunTrace
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
@@ -64,6 +64,30 @@ def get_run(
             return DuckDBRegistry(db).get_run(run_id)
         except KeyError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    finally:
+        db.close()
+
+
+@router.get("/runs/{run_id}/trace", response_model=RunTrace)
+def get_run_trace(
+    project_id_or_slug: Annotated[str, Path(min_length=1)],
+    run_id: Annotated[str, Path(min_length=1)],
+    request: Request,
+) -> RunTrace:
+    store = get_project_store(request)
+    try:
+        project = store.get_project(project_id_or_slug)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    db = DBManager(str(store.project_db_path(project)))
+    try:
+        registry = DuckDBRegistry(db)
+        try:
+            run = registry.get_run(run_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        return RunTrace(run=run, events=registry.list_run_events(run.run_id))
     finally:
         db.close()
 

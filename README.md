@@ -194,6 +194,7 @@ Current API endpoints:
 - `GET /projects/{project_id_or_slug}/messages`
 - `GET /projects/{project_id_or_slug}/runs`
 - `GET /projects/{project_id_or_slug}/runs/{run_id}`
+- `GET /projects/{project_id_or_slug}/runs/{run_id}/trace`
 - `GET /projects/{project_id_or_slug}/artifacts/{filename}`
 
 Run tests and coverage:

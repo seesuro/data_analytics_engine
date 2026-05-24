@@ -70,4 +70,5 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Route EDA tools through the active cleaning draft context.
 - [x] Show active draft cleaning action history in the workspace.
 - [x] Persist run events as durable workflow traces.
+- [x] Expose run traces through the API.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

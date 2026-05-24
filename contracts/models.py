@@ -259,6 +259,11 @@ class ChatResponse(ContractModel):
     messages: list[ChatMessage] = Field(default_factory=list)
 
 
+class RunTrace(ContractModel):
+    run: Run
+    events: list[RunEvent] = Field(default_factory=list)
+
+
 class IntentDecision(ContractModel):
     intent: IntentType
     table_name: str | None = None

@@ -55,6 +55,12 @@ def test_runs_api_lists_and_fetches_runs(tmp_path):
     assert fetched.json()["run_id"] == run["run_id"]
     assert fetched.json()["status"] == "succeeded"
 
+    trace = client.get(f"/projects/{project.project_slug}/runs/{run['run_id']}/trace")
+    assert trace.status_code == 200
+    assert trace.json()["run"]["run_id"] == run["run_id"]
+    assert trace.json()["events"][0]["event_type"] == "completed"
+    assert trace.json()["events"][0]["message"] == "Run completed."
+
     messages = client.get(f"/projects/{project.project_slug}/messages")
     assert messages.status_code == 200
     assert [message["role"] for message in messages.json()] == ["user", "assistant"]
@@ -78,6 +84,9 @@ def test_runs_api_returns_404_for_missing_run_and_artifact(tmp_path):
 
     missing_run = client.get(f"/projects/{project.project_slug}/runs/missing")
     assert missing_run.status_code == 404
+
+    missing_trace = client.get(f"/projects/{project.project_slug}/runs/missing/trace")
+    assert missing_trace.status_code == 404
 
     missing_artifact = client.get(f"/projects/{project.project_slug}/artifacts/missing.png")
     assert missing_artifact.status_code == 404
