@@ -44,10 +44,10 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 
 ## Epic F - HTMX UI
 
-- [ ] Add project picker and project creation view.
-- [ ] Add upload form.
-- [ ] Add chat and run result view.
-- [ ] Add basic run history.
+- [x] Add project picker and project creation view.
+- [x] Add upload form.
+- [x] Add chat and run result view.
+- [x] Add basic run history.
 
 ## Epic G - Quality Gates
 

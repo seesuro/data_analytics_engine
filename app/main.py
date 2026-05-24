@@ -4,6 +4,7 @@ from app.routes.chat import router as chat_router
 from app.routes.datasets import router as datasets_router
 from app.routes.projects import router as projects_router
 from app.routes.runs import router as runs_router
+from app.routes.ui import router as ui_router
 from storage.project_store import ProjectStore
 
 
@@ -11,6 +12,7 @@ def create_app(project_store: ProjectStore | None = None, llm=None) -> FastAPI:
     app = FastAPI(title="Data Analytics Engine")
     app.state.project_store = project_store or ProjectStore()
     app.state.llm = llm
+    app.include_router(ui_router)
     app.include_router(chat_router)
     app.include_router(projects_router)
     app.include_router(datasets_router)

@@ -39,6 +39,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `routes/datasets.py`: dataset upload endpoint backed by project-aware ingestion.
   - `routes/projects.py`: project create, list, and lookup endpoints.
   - `routes/runs.py`: run listing/detail endpoints and project artifact file serving.
+  - `routes/ui.py`: minimal HTMX web interface for project creation, dataset upload, chat, results, artifacts, and run history.
 - `config/`
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
 - `contracts/`
@@ -129,10 +130,21 @@ Run the API locally:
 uv run uvicorn app.main:app --reload
 ```
 
+Open the local web UI at:
+
+```text
+http://127.0.0.1:8000/
+```
+
 The default local LLM is `qwen2.5` because it is a good fit for instruction following and SQL generation among the currently available Ollama models on the development machine.
 
 Current API endpoints:
 
+- `GET /`
+- `GET /ui/projects/{project_id_or_slug}/workspace`
+- `POST /ui/projects`
+- `POST /ui/projects/{project_id_or_slug}/datasets`
+- `POST /ui/projects/{project_id_or_slug}/chat`
 - `POST /projects`
 - `GET /projects`
 - `GET /projects/{project_id_or_slug}`
