@@ -20,7 +20,7 @@ The project is moving toward a single-machine web application that can scale lat
 - SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
 - Agent runtime dependencies are grouped in an `AnalyticsRuntime` object so the graph receives one explicit context for DB, metadata, LLM, and artifacts.
 - Project chat messages are persisted in DuckDB, and EDA requests can use deterministic Python tools before LLM explanation.
-- Cleaning flows are modeled as auditable draft workflows before cleaned tables are saved.
+- Cleaning flows are modeled as auditable draft workflows before cleaned tables are saved, with active draft action history visible in the workspace.
 - While a cleaning draft is active, EDA checks without an explicit table name target the draft table by default.
 - Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
@@ -125,6 +125,8 @@ EDA-style requests such as missing-value checks, table profiles, numeric summari
 Cleaning is designed as a reviewable workflow: raw tables remain immutable, draft tables hold experiments, every action is logged, and a cleaned table is saved only when the user chooses to keep it.
 
 When a draft cleaning flow is active, EDA requests such as `show missing values`, `profile table`, or `show correlations` default to the draft table. Users can still name a raw table explicitly when they want to inspect the original source.
+
+The workspace shows the active draft and its cleaning action history, including action type, status, and arguments. This is the first review checkpoint before richer approval flows are added.
 
 The first cleaning-flow tools create and manage the draft lifecycle:
 

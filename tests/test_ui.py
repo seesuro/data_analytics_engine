@@ -132,9 +132,16 @@ def test_ui_workspace_shows_active_cleaning_draft(tmp_path):
         f"/ui/projects/{project.project_slug}/chat",
         data={"message": "start cleaning sales"},
     )
+    client.post(
+        f"/ui/projects/{project.project_slug}/chat",
+        data={"message": "drop duplicates by order_id"},
+    )
 
     response = client.get(f"/ui/projects/{project.project_slug}/workspace")
 
     assert response.status_code == 200
     assert "Active cleaning draft" in response.text
     assert "EDA checks without a table name will use this draft" in response.text
+    assert "Cleaning Action History" in response.text
+    assert "start_flow" in response.text
+    assert "drop_duplicates" in response.text

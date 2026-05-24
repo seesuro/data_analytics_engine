@@ -68,4 +68,5 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add draft imputation tools for numeric and categorical missing values.
 - [x] Wire cleaning tools into deterministic chat/UI flows.
 - [x] Route EDA tools through the active cleaning draft context.
+- [x] Show active draft cleaning action history in the workspace.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

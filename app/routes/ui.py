@@ -1,4 +1,5 @@
 import html
+import json
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -222,7 +223,7 @@ def _empty_workspace() -> str:
 def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "") -> str:
     store = get_project_store(request)
     project = store.get_project(project_id_or_slug)
-    metadata, runs, active_flow = _project_registry_snapshots(store, project)
+    metadata, runs, active_flow, cleaning_actions = _project_registry_snapshots(store, project)
     return f"""
 {notice}
 <div class="card">
@@ -230,6 +231,7 @@ def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "
   <p class="muted">Project slug: <code>{_e(project.project_slug)}</code></p>
 </div>
 {_active_flow_banner(active_flow)}
+{_cleaning_actions_card(active_flow, cleaning_actions)}
 <div class="card">
   <h3>Upload Dataset</h3>
   <form hx-post="/ui/projects/{_e(project.project_slug)}/datasets" hx-target="#workspace" hx-swap="innerHTML" enctype="multipart/form-data">
@@ -257,12 +259,14 @@ def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "
 def _project_registry_snapshots(store: ProjectStore, project):
     db_path = store.project_db_path(project)
     if not db_path.exists():
-        return {"tables": {}}, [], None
+        return {"tables": {}}, [], None, []
 
     db = DBManager(str(db_path))
     try:
         registry = DuckDBRegistry(db)
-        return registry.metadata(), registry.list_runs().to_dict(orient="records"), active_cleaning_flow(registry)
+        active_flow = active_cleaning_flow(registry)
+        actions = registry.list_cleaning_actions(active_flow.flow_id) if active_flow else []
+        return registry.metadata(), registry.list_runs().to_dict(orient="records"), active_flow, actions
     finally:
         db.close()
 
@@ -274,6 +278,33 @@ def _active_flow_banner(active_flow) -> str:
 <div class="notice">
   Active cleaning draft: <code>{_e(active_flow.draft_table)}</code> from <code>{_e(active_flow.source_table)}</code>.
   EDA checks without a table name will use this draft.
+</div>
+"""
+
+
+def _cleaning_actions_card(active_flow, actions: list) -> str:
+    if active_flow is None:
+        return ""
+    if not actions:
+        rows = '<tr><td colspan="4" class="muted">No actions recorded yet.</td></tr>'
+    else:
+        rows = "".join(
+            "<tr>"
+            f"<td>{_e(index)}</td>"
+            f"<td><code>{_e(action.action_type.value)}</code></td>"
+            f"<td>{_e(action.status.value)}</td>"
+            f"<td><code>{_e(json.dumps(action.arguments, sort_keys=True))}</code></td>"
+            "</tr>"
+            for index, action in enumerate(actions, start=1)
+        )
+    return f"""
+<div class="card">
+  <h3>Cleaning Action History</h3>
+  <p class="muted">Draft table: <code>{_e(active_flow.draft_table)}</code></p>
+  <table>
+    <thead><tr><th>#</th><th>Action</th><th>Status</th><th>Arguments</th></tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
 </div>
 """
 
