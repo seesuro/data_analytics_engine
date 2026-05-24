@@ -164,9 +164,18 @@ The test suite fails if total coverage is below 90%.
 
 The golden-flow test covers the current core product path: create a project, ingest a CSV, read DuckDB registry metadata, run the analytics engine with stubbed LLM responses, execute SQL, save a chart artifact, and return a report.
 
-## Legacy Examples
+## Examples
 
-The examples under `examples/` still show the earlier direct-DuckDB flow. They will be updated as the project-aware ingestion and future FastAPI/HTMX interface are built out.
+The examples under `examples/` use the current project-aware architecture:
+
+```bash
+uv run python examples/example_ingestion.py
+uv run python examples/run_demo.py
+```
+
+`example_ingestion.py` creates a project, ingests `data/sales.csv`, and prints registry metadata. `run_demo.py` creates a project, ingests the same file, runs the analytics engine with a deterministic stub LLM, registers the run, and prints SQL, preview rows, report, and artifact paths.
+
+Generated example projects are stored under `var/example_projects/`, which is ignored by git.
 
 ## Design Notes
 

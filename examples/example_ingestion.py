@@ -1,46 +1,45 @@
 import sys
-import os
+from pathlib import Path
+from uuid import uuid4
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
-# ingestor = DataIngestor(db_manager)
-# ingestor.ingest_file("data/sales.csv")
-
-from ingestion.data_ingestor import DataIngestor
+from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
-import json
-from config.settings import METADATA_PATH
-from config.settings import DB_PATH
-# db_path = "data/analytics.db"
-db_manager = DBManager(DB_PATH)
-ingestor = DataIngestor(db_manager)
-ingestor.ingest_file("data/sales.csv")
-ingestor.meta.save()  # Ensure metadata is saved after ingestion
-
-# Load metadata if available
-if os.path.exists(METADATA_PATH):
-    with open(METADATA_PATH, "r") as f:
-        metadata = json.load(f)
-else:
-    metadata = {}
+from storage.duckdb_registry import DuckDBRegistry
+from storage.project_store import ProjectStore
 
 
-from graph.analytics_graph import build_graph
+def main() -> None:
+    store = ProjectStore(ROOT / "var" / "example_projects")
+    project = store.create_project(
+        project_name="Example Ingestion Demo",
+        project_slug=f"example-ingestion-{uuid4().hex[:8]}",
+    )
 
-graph = build_graph()
+    dataset = ProjectIngestionService(store).ingest_file(project.project_slug, ROOT / "data" / "sales.csv")
+
+    db = DBManager(str(store.project_db_path(project)))
+    try:
+        metadata = DuckDBRegistry(db).metadata()
+    finally:
+        db.close()
+
+    print("PROJECT")
+    print(f"  name: {project.project_name}")
+    print(f"  slug: {project.project_slug}")
+    print(f"  path: {project.path}")
+    print()
+    print("DATASET")
+    print(f"  source: {dataset.source_filename}")
+    print(f"  status: {dataset.status}")
+    print(f"  table: {dataset.table_name}")
+    print(f"  rows: {dataset.row_count}")
+    print()
+    print("METADATA")
+    print(metadata)
 
 
-
-query = "What is the data available?"
-
-initial_state = {
-    "user_query": query,
-    "db": db_manager,
-    "metadata": metadata
-}
-
-result = graph.invoke(initial_state)
-
-print("\nFINAL OUTPUT:")
-print(result)
+if __name__ == "__main__":
+    main()
