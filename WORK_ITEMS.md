@@ -63,5 +63,6 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Route EDA-style chat requests through tools before explanation.
 - [x] Add cleaning flow and cleaning action audit contracts.
 - [x] Persist cleaning flow and cleaning action audit records.
+- [x] Add draft cleaning flow lifecycle tools.
 - [ ] Add human-reviewable cleaning and imputation tools.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

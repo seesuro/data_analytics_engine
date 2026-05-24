@@ -121,6 +121,13 @@ EDA-style requests such as missing-value checks, table profiles, numeric summari
 
 Cleaning is designed as a reviewable workflow: raw tables remain immutable, draft tables hold experiments, every action is logged, and a cleaned table is saved only when the user chooses to keep it.
 
+The first cleaning-flow tools create and manage the draft lifecycle:
+
+- `start_cleaning_flow`: copies a source table into a draft table and records the start action.
+- `preview_cleaning_flow`: returns source/draft summaries plus action history.
+- `save_cleaned_table`: copies the draft into the next cleaned table version and marks the flow committed.
+- `discard_cleaning_flow`: marks the flow aborted and drops the draft table by default.
+
 ## Running Locally
 
 Prerequisites:
