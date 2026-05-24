@@ -76,4 +76,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Centralize API/UI chat execution and persistence.
 - [x] Show persisted project chat transcript in the workspace.
 - [x] Add compact EDA result summaries to workflow trace payloads.
+- [x] Serve local HTMX-compatible UI helper instead of relying on CDN.
+- [x] Render assistant reports with readable paragraphs, bullets, and inline code.
+- [x] Flag high-missingness columns for review before imputation.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

@@ -244,18 +244,32 @@ def _missing_value_guidance(db: Any, table_name: str, registry: DuckDBRegistry) 
 def _column_recommendation(metadata: dict[str, Any], table_name: str, missing_column: dict[str, Any]) -> dict[str, Any]:
     column_name = missing_column["column"]
     column_type = str(metadata["tables"][table_name]["columns"][column_name])
+    missing_pct = missing_column["missing_pct"]
+    risk_level = "high" if missing_pct >= 40 else "medium" if missing_pct >= 10 else "low"
     if column_type.upper().startswith(NUMERIC_TYPES):
         action = f"impute numeric {column_name} median"
-        rationale = "Numeric columns often start with median imputation because it is robust to outliers."
+        if risk_level == "high":
+            recommendation = f"review {column_name} before imputation"
+            rationale = "This column has high missingness, so blind median imputation may distort analysis."
+        else:
+            recommendation = action
+            rationale = "Numeric columns often start with median imputation because it is robust to outliers."
     else:
         action = f"impute categorical {column_name} mode"
-        rationale = "Categorical/text columns often start with mode imputation or a business-specific constant."
+        if risk_level == "high":
+            recommendation = f"review {column_name} before imputation"
+            rationale = "This column has high missingness, so blind mode imputation may erase important uncertainty."
+        else:
+            recommendation = action
+            rationale = "Categorical/text columns often start with mode imputation or a business-specific constant."
     return {
         "column": column_name,
         "missing_count": missing_column["missing_count"],
-        "missing_pct": missing_column["missing_pct"],
+        "missing_pct": missing_pct,
         "column_type": column_type,
-        "suggested_action": action,
+        "risk_level": risk_level,
+        "suggested_action": recommendation,
+        "fallback_imputation_command": action,
         "rationale": rationale,
     }
 
@@ -268,11 +282,20 @@ def _missing_value_guidance_report(result: dict) -> str:
         f"Found missing values in {len(result['missing_columns'])} column(s) of {result['table_name']}.",
         "Suggested next actions:",
     ]
+    if any(recommendation["risk_level"] == "high" for recommendation in result["recommendations"]):
+        lines.append("- High missingness warning: several columns have 40%+ missing values, so do not blindly impute them.")
     for recommendation in result["recommendations"][:5]:
-        lines.append(
-            f"- {recommendation['column']}: {recommendation['missing_count']} missing "
-            f"({recommendation['missing_pct']}%). Try `{recommendation['suggested_action']}`."
-        )
+        if recommendation["risk_level"] == "high":
+            lines.append(
+                f"- {recommendation['column']}: {recommendation['missing_count']} missing "
+                f"({recommendation['missing_pct']}%, high risk). Review whether to keep, drop, flag, or then use "
+                f"`{recommendation['fallback_imputation_command']}`."
+            )
+        else:
+            lines.append(
+                f"- {recommendation['column']}: {recommendation['missing_count']} missing "
+                f"({recommendation['missing_pct']}%). Try `{recommendation['suggested_action']}`."
+            )
     if result["active_draft_table"] is None:
         lines.append(f"Start a reviewable draft first with `start cleaning {result['table_name']}` before applying changes.")
     else:

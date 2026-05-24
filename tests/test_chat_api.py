@@ -149,9 +149,10 @@ def test_chat_api_routes_null_handling_questions_to_guidance(tmp_path):
     body = response.json()
     assert body["run"]["tool_call"] is None
     assert "Suggested next actions" in body["run"]["report"]
+    assert "High missingness warning" in body["run"]["report"]
     assert "impute numeric revenue median" in body["run"]["report"]
     assert "start cleaning sales" in body["run"]["report"]
-    assert body["messages"][1]["payload"]["cleaning"]["recommendations"][0]["suggested_action"]
+    assert body["messages"][1]["payload"]["cleaning"]["recommendations"][0]["risk_level"] == "high"
 
 
 def test_chat_api_runs_eda_against_active_cleaning_draft(tmp_path):

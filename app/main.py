@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.routes.chat import router as chat_router
 from app.routes.datasets import router as datasets_router
@@ -12,6 +13,7 @@ def create_app(project_store: ProjectStore | None = None, llm=None) -> FastAPI:
     app = FastAPI(title="Data Analytics Engine")
     app.state.project_store = project_store or ProjectStore()
     app.state.llm = llm
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.include_router(ui_router)
     app.include_router(chat_router)
     app.include_router(projects_router)

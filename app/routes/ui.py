@@ -1,5 +1,6 @@
 import html
 import json
+import re
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -95,7 +96,7 @@ def chat_with_project(
         llm=request.app.state.llm,
     )
 
-    return HTMLResponse(_run_card(project.project_slug, response.run))
+    return HTMLResponse(_render_workspace(request, project.project_slug, _run_card(project.project_slug, response.run)))
 
 
 def _page(projects: str, workspace: str) -> str:
@@ -105,7 +106,7 @@ def _page(projects: str, workspace: str) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Data Analytics Engine</title>
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="/static/htmx-lite.js"></script>
   <style>
     :root {{ color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }}
     body {{ margin: 0; background: #f6f7fb; color: #172033; }}
@@ -118,6 +119,9 @@ def _page(projects: str, workspace: str) -> str:
     .card {{ background: white; border: 1px solid #e4e8f2; border-radius: 18px; padding: 20px; margin-bottom: 16px; box-shadow: 0 12px 32px rgba(31, 42, 68, .08); }}
     .project {{ display: block; color: white; text-decoration: none; padding: 10px 12px; border-radius: 10px; margin: 4px 0; background: rgba(255,255,255,.08); }}
     .muted {{ color: #677084; }}
+    .message {{ border-left: 4px solid #dfe5f4; padding: 8px 12px; margin: 10px 0; background: #fafbff; border-radius: 10px; }}
+    .message.user {{ border-left-color: #3157ff; }}
+    .message.assistant {{ border-left-color: #21a366; }}
     .notice {{ padding: 12px 14px; border-radius: 12px; margin-bottom: 16px; background: #edf7ee; color: #1b6531; }}
     .notice.error {{ background: #fff0f0; color: #9d2424; }}
     table {{ width: 100%; border-collapse: collapse; }}
@@ -197,7 +201,7 @@ def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "
 </div>
 <div class="card">
   <h3>Ask a Question</h3>
-  <form hx-post="/ui/projects/{_e(project.project_slug)}/chat" hx-target="#chat-results" hx-swap="afterbegin">
+  <form hx-post="/ui/projects/{_e(project.project_slug)}/chat" hx-target="#workspace" hx-swap="innerHTML">
     <input name="message" required placeholder="What is total revenue by region?">
     <button type="submit">Run Analysis</button>
   </form>
@@ -284,9 +288,8 @@ def _chat_transcript(messages: list) -> str:
     rows = []
     for message in messages[-10:]:
         role = "You" if message.role == ChatRole.USER else "Assistant"
-        rows.append(
-            f'<p><strong>{_e(role)}:</strong> {_e(message.content)}</p>'
-        )
+        class_name = "user" if message.role == ChatRole.USER else "assistant"
+        rows.append(f'<div class="message {class_name}"><strong>{_e(role)}:</strong>{_rich_text(message.content)}</div>')
     return "".join(rows)
 
 
@@ -297,6 +300,7 @@ def _run_history(project_slug: str, runs: list[dict]) -> str:
         f'<div class="card"><h3>{_e(run["question"])}</h3>'
         f'<p class="muted">Status: {_e(run["status"])}</p>'
         f'{_tool_badge(run)}'
+        f'{_rich_text(run.get("report") or run.get("error") or "")}'
         f'{_run_links(project_slug, run["run_id"])}</div>'
         for run in reversed(runs[-5:])
     )
@@ -312,7 +316,7 @@ def _run_card(project_slug: str, run) -> str:
 <div class="card">
   <h3>{_e(run.question)}</h3>
   {_tool_badge(run.model_dump(mode="json"))}
-  <p>{_e(run.report or run.error or "No report generated.")}</p>
+  {_rich_text(run.report or run.error or "No report generated.")}
   {_sql(run)}
   {_tool_result_table(run.tool_result)}
   {preview}
@@ -325,6 +329,9 @@ def _run_card(project_slug: str, run) -> str:
 def _run_links(project_slug: str, run_id) -> str:
     escaped_slug = _e(project_slug)
     escaped_run_id = _e(run_id)
+    run_url = f"/projects/{escaped_slug}/runs/{escaped_run_id}"
+    trace_url = f"{run_url}/trace"
+    return f'<p class="muted"><a href="{run_url}">Open run JSON</a> &middot; <a href="{trace_url}">Open workflow trace</a></p>'
     return (
         f'<p class="muted">'
         f'<a href="/projects/{escaped_slug}/runs/{escaped_run_id}">Open run JSON</a>'
@@ -397,6 +404,36 @@ def _dataset_notice(dataset) -> str:
 def _notice(message: str, kind: str = "success") -> str:
     class_name = "notice error" if kind == "error" else "notice"
     return f'<div class="{class_name}">{_e(message)}</div>'
+
+
+def _rich_text(value: str) -> str:
+    lines = [line.rstrip() for line in value.splitlines()]
+    blocks = []
+    bullets = []
+
+    def flush_bullets() -> None:
+        if bullets:
+            blocks.append("<ul>" + "".join(f"<li>{_inline_text(item)}</li>" for item in bullets) + "</ul>")
+            bullets.clear()
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            flush_bullets()
+            continue
+        if stripped.startswith("- "):
+            bullets.append(stripped[2:])
+            continue
+        flush_bullets()
+        blocks.append(f"<p>{_inline_text(stripped)}</p>")
+
+    flush_bullets()
+    return "".join(blocks)
+
+
+def _inline_text(value: str) -> str:
+    escaped = _e(value)
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
 
 
 def _e(value: object) -> str:

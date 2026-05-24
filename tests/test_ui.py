@@ -27,6 +27,7 @@ def test_ui_home_page_shows_create_project_form(tmp_path):
     assert "Create Project" in response.text
     assert "No projects yet" in response.text
     assert "hx-post=\"/ui/projects\"" in response.text
+    assert 'src="/static/htmx-lite.js"' in response.text
 
 
 def test_ui_create_project_returns_workspace(tmp_path):
@@ -120,8 +121,10 @@ def test_ui_chat_returns_null_handling_guidance(tmp_path):
 
     assert response.status_code == 200
     assert "Suggested next actions" in response.text
+    assert "High missingness warning" in response.text
     assert "impute numeric revenue median" in response.text
     assert "missing_summary" not in response.text
+    assert "<ul>" in response.text
 
 
 def test_ui_chat_returns_cleaning_command_card(tmp_path):

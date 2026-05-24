@@ -20,7 +20,7 @@ The project is moving toward a single-machine web application that can scale lat
 - SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
 - Agent runtime dependencies are grouped in an `AnalyticsRuntime` object so the graph receives one explicit context for DB, metadata, LLM, and artifacts.
 - Project chat messages are persisted in DuckDB, and EDA requests can use deterministic Python tools before LLM explanation.
-- The UI shows persisted chat transcript context when a project workspace is opened.
+- The UI uses a local HTMX-compatible helper and shows persisted chat transcript context when a project workspace is opened.
 - Cleaning flows are modeled as auditable draft workflows before cleaned tables are saved, with active draft action history visible in the workspace.
 - While a cleaning draft is active, EDA checks without an explicit table name target the draft table by default.
 - Local LLM default: `qwen2.5` through Ollama.
@@ -40,6 +40,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `app/`
   - `routes/chat.py`: in-process chat/run endpoint backed by `SQLEngine` and `EDAEngine`.
   - `main.py`: FastAPI app factory.
+  - `static/htmx-lite.js`: local HTMX-compatible helper for project switching, uploads, and chat submits without CDN dependency.
   - `routes/datasets.py`: dataset upload endpoint backed by project-aware ingestion.
   - `routes/projects.py`: project create, list, and lookup endpoints.
   - `routes/runs.py`: run listing/detail endpoints and project artifact file serving.
@@ -155,6 +156,8 @@ Cleaning commands are currently deterministic chat commands, for example:
 - `impute categorical region constant Unknown`
 - `save cleaned table as sales_cleaned_review`
 - `discard cleaning draft`
+
+Null-handling guidance is risk-aware: columns with 40% or more missing values are flagged for human review before imputation because blindly filling half a column can distort analysis.
 
 ## Running Locally
 
