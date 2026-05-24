@@ -11,6 +11,7 @@ from engine.cleaning_engine import CleaningEngine
 from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
 from engine.sql_engine import SQLEngine
+from engine.table_context import active_cleaning_flow, working_table_context
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
@@ -92,6 +93,7 @@ def chat_with_project(
     try:
         registry = DuckDBRegistry(db)
         metadata = registry.metadata()
+        eda_metadata = working_table_context(db, registry, metadata).metadata
         cleaning_engine = CleaningEngine()
         eda_engine = EDAEngine()
         if cleaning_engine.can_handle(message, metadata):
@@ -102,12 +104,12 @@ def chat_with_project(
                 registry=registry,
                 metadata=metadata,
             )
-        elif eda_engine.can_handle(message, metadata):
+        elif eda_engine.can_handle(message, eda_metadata):
             response = eda_engine.run(
                 message=message,
                 project_id=project.project_id,
                 db=db,
-                metadata=metadata,
+                metadata=eda_metadata,
                 llm=request.app.state.llm,
             )
         else:
@@ -220,13 +222,14 @@ def _empty_workspace() -> str:
 def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "") -> str:
     store = get_project_store(request)
     project = store.get_project(project_id_or_slug)
-    metadata, runs = _project_registry_snapshots(store, project)
+    metadata, runs, active_flow = _project_registry_snapshots(store, project)
     return f"""
 {notice}
 <div class="card">
   <h2>{_e(project.project_name)}</h2>
   <p class="muted">Project slug: <code>{_e(project.project_slug)}</code></p>
 </div>
+{_active_flow_banner(active_flow)}
 <div class="card">
   <h3>Upload Dataset</h3>
   <form hx-post="/ui/projects/{_e(project.project_slug)}/datasets" hx-target="#workspace" hx-swap="innerHTML" enctype="multipart/form-data">
@@ -254,14 +257,25 @@ def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "
 def _project_registry_snapshots(store: ProjectStore, project):
     db_path = store.project_db_path(project)
     if not db_path.exists():
-        return {"tables": {}}, []
+        return {"tables": {}}, [], None
 
     db = DBManager(str(db_path))
     try:
         registry = DuckDBRegistry(db)
-        return registry.metadata(), registry.list_runs().to_dict(orient="records")
+        return registry.metadata(), registry.list_runs().to_dict(orient="records"), active_cleaning_flow(registry)
     finally:
         db.close()
+
+
+def _active_flow_banner(active_flow) -> str:
+    if active_flow is None:
+        return ""
+    return f"""
+<div class="notice">
+  Active cleaning draft: <code>{_e(active_flow.draft_table)}</code> from <code>{_e(active_flow.source_table)}</code>.
+  EDA checks without a table name will use this draft.
+</div>
+"""
 
 
 def _tables(metadata: dict) -> str:

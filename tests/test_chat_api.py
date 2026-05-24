@@ -125,6 +125,35 @@ def test_chat_api_runs_cleaning_command_and_persists_messages(tmp_path):
         db.close()
 
 
+def test_chat_api_runs_eda_against_active_cleaning_draft(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "sales.csv"
+    source.write_text("Order ID,Region,Revenue\n1,East,100\n2,West,\n", encoding="utf-8")
+    ProjectIngestionService(store).ingest_file(project.project_slug, source)
+
+    client = TestClient(create_app(store))
+    start_response = client.post(
+        "/chat",
+        json={"project_id": str(project.project_id), "message": "start cleaning sales"},
+    )
+    impute_response = client.post(
+        "/chat",
+        json={"project_id": str(project.project_id), "message": "impute numeric revenue median"},
+    )
+    eda_response = client.post(
+        "/chat",
+        json={"project_id": str(project.project_id), "message": "Show missing values"},
+    )
+
+    assert start_response.status_code == 200
+    assert impute_response.status_code == 200
+    assert eda_response.status_code == 200
+    result = eda_response.json()["run"]["tool_result"]["result"]
+    assert result["table_name"].startswith("sales_draft_")
+    assert next(column for column in result["columns"] if column["column"] == "revenue")["missing_count"] == 0
+
+
 def test_chat_api_returns_404_for_missing_project(tmp_path):
     client = TestClient(create_app(ProjectStore(tmp_path / "projects")))
 

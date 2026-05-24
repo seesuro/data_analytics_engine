@@ -5,6 +5,7 @@ from engine.cleaning_engine import CleaningEngine
 from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
 from engine.sql_engine import SQLEngine
+from engine.table_context import working_table_context
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
@@ -29,6 +30,7 @@ def chat(payload: ChatRequest, request: Request) -> ChatResponse:
     try:
         registry = DuckDBRegistry(db)
         metadata = registry.metadata()
+        eda_metadata = working_table_context(db, registry, metadata).metadata
         cleaning_engine = CleaningEngine()
         eda_engine = EDAEngine()
         if cleaning_engine.can_handle(payload.message, metadata):
@@ -39,12 +41,12 @@ def chat(payload: ChatRequest, request: Request) -> ChatResponse:
                 registry=registry,
                 metadata=metadata,
             )
-        elif eda_engine.can_handle(payload.message, metadata):
+        elif eda_engine.can_handle(payload.message, eda_metadata):
             response = eda_engine.run(
                 message=payload.message,
                 project_id=project.project_id,
                 db=db,
-                metadata=metadata,
+                metadata=eda_metadata,
                 llm=request.app.state.llm,
             )
         else:

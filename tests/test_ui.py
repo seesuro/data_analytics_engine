@@ -119,3 +119,22 @@ def test_ui_chat_returns_cleaning_command_card(tmp_path):
 
     assert response.status_code == 200
     assert "Started a cleaning draft" in response.text
+
+
+def test_ui_workspace_shows_active_cleaning_draft(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "sales.csv"
+    source.write_text("Order ID,Region,Revenue\n1,East,100\n", encoding="utf-8")
+    ProjectIngestionService(store).ingest_file(project.project_slug, source)
+    client = TestClient(create_app(store))
+    client.post(
+        f"/ui/projects/{project.project_slug}/chat",
+        data={"message": "start cleaning sales"},
+    )
+
+    response = client.get(f"/ui/projects/{project.project_slug}/workspace")
+
+    assert response.status_code == 200
+    assert "Active cleaning draft" in response.text
+    assert "EDA checks without a table name will use this draft" in response.text

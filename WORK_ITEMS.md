@@ -67,4 +67,5 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add first draft mutation tools for duplicate removal and column rename.
 - [x] Add draft imputation tools for numeric and categorical missing values.
 - [x] Wire cleaning tools into deterministic chat/UI flows.
+- [x] Route EDA tools through the active cleaning draft context.
 - [ ] Add richer EDA workflow traces and approval checkpoints.
