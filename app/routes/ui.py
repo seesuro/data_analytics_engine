@@ -8,16 +8,13 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse
 
-from engine.cleaning_engine import CleaningEngine
-from engine.eda_engine import EDAEngine
-from engine.run_mapper import state_to_chat_response
-from engine.sql_engine import SQLEngine
-from engine.table_context import active_cleaning_flow, working_table_context
+from contracts import ChatRole
+from engine.chat_service import run_project_chat
+from engine.table_context import active_cleaning_flow
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
-from contracts import ChatMessage, ChatRole
 
 
 router = APIRouter(tags=["ui"])
@@ -90,59 +87,13 @@ def chat_with_project(
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    db = DBManager(str(store.project_db_path(project)))
-    try:
-        registry = DuckDBRegistry(db)
-        metadata = registry.metadata()
-        eda_metadata = working_table_context(db, registry, metadata).metadata
-        cleaning_engine = CleaningEngine()
-        eda_engine = EDAEngine()
-        if cleaning_engine.can_handle(message, metadata):
-            response = cleaning_engine.run(
-                message=message,
-                project_id=project.project_id,
-                db=db,
-                registry=registry,
-                metadata=metadata,
-            )
-        elif eda_engine.can_handle(message, eda_metadata):
-            response = eda_engine.run(
-                message=message,
-                project_id=project.project_id,
-                db=db,
-                metadata=eda_metadata,
-                llm=request.app.state.llm,
-            )
-        else:
-            state = SQLEngine().run(
-                question=message,
-                db=db,
-                metadata=metadata,
-                artifact_dir=store.artifacts_dir(project),
-                llm=request.app.state.llm,
-            )
-            response = state_to_chat_response(
-                state=state,
-                project_id=project.project_id,
-                question=message,
-                preview_limit=25,
-            )
-            response.messages.extend(
-                [
-                    ChatMessage(project_id=project.project_id, role=ChatRole.USER, content=message, run_id=response.run.run_id),
-                    ChatMessage(
-                        project_id=project.project_id,
-                        role=ChatRole.ASSISTANT,
-                        content=response.run.report or response.run.error or "No response generated.",
-                        run_id=response.run.run_id,
-                    ),
-                ]
-            )
-        registry.register_run(response.run)
-        registry.register_run_events(response.events)
-        registry.register_chat_messages(response.messages)
-    finally:
-        db.close()
+    response = run_project_chat(
+        store=store,
+        project=project,
+        message=message,
+        preview_limit=25,
+        llm=request.app.state.llm,
+    )
 
     return HTMLResponse(_run_card(project.project_slug, response.run))
 
@@ -224,7 +175,7 @@ def _empty_workspace() -> str:
 def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "") -> str:
     store = get_project_store(request)
     project = store.get_project(project_id_or_slug)
-    metadata, runs, active_flow, cleaning_actions = _project_registry_snapshots(store, project)
+    metadata, runs, messages, active_flow, cleaning_actions = _project_registry_snapshots(store, project)
     return f"""
 {notice}
 <div class="card">
@@ -251,6 +202,10 @@ def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "
     <button type="submit">Run Analysis</button>
   </form>
 </div>
+<div class="card">
+  <h3>Chat Transcript</h3>
+  {_chat_transcript(messages)}
+</div>
 <div id="chat-results">
   {_run_history(project.project_slug, runs)}
 </div>
@@ -260,14 +215,15 @@ def _render_workspace(request: Request, project_id_or_slug: str, notice: str = "
 def _project_registry_snapshots(store: ProjectStore, project):
     db_path = store.project_db_path(project)
     if not db_path.exists():
-        return {"tables": {}}, [], None, []
+        return {"tables": {}}, [], [], None, []
 
     db = DBManager(str(db_path))
     try:
         registry = DuckDBRegistry(db)
         active_flow = active_cleaning_flow(registry)
         actions = registry.list_cleaning_actions(active_flow.flow_id) if active_flow else []
-        return registry.metadata(), registry.list_runs().to_dict(orient="records"), active_flow, actions
+        messages = registry.list_chat_messages()
+        return registry.metadata(), registry.list_runs().to_dict(orient="records"), messages, active_flow, actions
     finally:
         db.close()
 
@@ -320,6 +276,18 @@ def _tables(metadata: dict) -> str:
         columns = ", ".join(table.get("columns", {}).keys())
         rows.append(f"<tr><td>{_e(table_name)}</td><td>{_e(str(table.get('row_count', '')))}</td><td>{_e(columns)}</td></tr>")
     return f"<table><thead><tr><th>Table</th><th>Rows</th><th>Columns</th></tr></thead><tbody>{''.join(rows)}</tbody></table>"
+
+
+def _chat_transcript(messages: list) -> str:
+    if not messages:
+        return '<p class="muted">No persisted chat messages yet.</p>'
+    rows = []
+    for message in messages[-10:]:
+        role = "You" if message.role == ChatRole.USER else "Assistant"
+        rows.append(
+            f'<p><strong>{_e(role)}:</strong> {_e(message.content)}</p>'
+        )
+    return "".join(rows)
 
 
 def _run_history(project_slug: str, runs: list[dict]) -> str:

@@ -166,3 +166,6 @@ def test_ui_workspace_shows_active_cleaning_draft(tmp_path):
     assert "start_flow" in response.text
     assert "drop_duplicates" in response.text
     assert "Open workflow trace" in response.text
+    assert "Chat Transcript" in response.text
+    assert "You:" in response.text
+    assert "Assistant:" in response.text

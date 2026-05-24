@@ -73,4 +73,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Expose run traces through the API.
 - [x] Link workflow traces from UI run cards and history.
 - [x] Route null-handling questions to cleaning guidance instead of raw EDA summaries.
+- [x] Centralize API/UI chat execution and persistence.
+- [x] Show persisted project chat transcript in the workspace.
+- [x] Add compact EDA result summaries to workflow trace payloads.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

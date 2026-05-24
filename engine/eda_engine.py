@@ -23,6 +23,7 @@ class EDAEngine:
             raise ValueError("No matching EDA tool found.")
 
         tool_result = execute_eda_tool(tool_call, db, metadata)
+        result_summary = _tool_result_summary(tool_result.result)
         report = _explain_tool_result(message, tool_result.result, llm)
         run = Run(
             project_id=project_id,
@@ -40,14 +41,17 @@ class EDAEngine:
                 role=ChatRole.ASSISTANT,
                 content=report,
                 run_id=run.run_id,
-                payload={"tool_name": tool_call.tool_name.value},
+                payload={"tool_name": tool_call.tool_name.value, "summary": result_summary},
             ),
         ]
         event = RunEvent(
             run_id=run.run_id,
             event_type=RunEventType.COMPLETED,
             message=f"EDA tool completed: {tool_call.tool_name.value}",
-            payload={"tool_call": tool_call.model_dump(mode="json")},
+            payload={
+                "tool_call": tool_call.model_dump(mode="json"),
+                "result_summary": result_summary,
+            },
         )
         return ChatResponse(run=run, events=[event], messages=messages)
 
@@ -81,8 +85,11 @@ def _fallback_report(result: dict[str, Any]) -> str:
         missing = [column for column in result["columns"] if column["missing_count"] > 0]
         if missing:
             names = ", ".join(column["column"] for column in missing[:5])
-            return f"Missing values were found in {len(missing)} column(s): {names}."
-        return "No missing values were found in the profiled table."
+            return (
+                f"Table {result['table_name']} has missing values in {len(missing)} column(s): {names}. "
+                "Ask `How should I handle nulls?` for cleaning recommendations."
+            )
+        return f"No missing values were found in {result['table_name']}."
 
     if "correlations" in result:
         correlations = result.get("correlations", [])
@@ -98,3 +105,58 @@ def _fallback_report(result: dict[str, Any]) -> str:
         return f"Numeric summary completed for {len(result['columns'])} column(s)."
 
     return "EDA tool completed."
+
+
+def _tool_result_summary(result: dict[str, Any]) -> dict[str, Any]:
+    summary = {
+        "table_name": result.get("table_name"),
+        "row_count": result.get("row_count"),
+    }
+    if "columns" in result and result["columns"] and "missing_count" in result["columns"][0]:
+        missing_columns = [column for column in result["columns"] if column["missing_count"] > 0]
+        summary.update(
+            {
+                "summary_type": "missing_values",
+                "missing_column_count": len(missing_columns),
+                "total_missing_count": sum(column["missing_count"] for column in missing_columns),
+                "columns": [
+                    {
+                        "column": column["column"],
+                        "missing_count": column["missing_count"],
+                        "missing_pct": column["missing_pct"],
+                    }
+                    for column in missing_columns[:10]
+                ],
+            }
+        )
+        return summary
+
+    if "correlations" in result:
+        summary.update(
+            {
+                "summary_type": "correlation",
+                "correlation_count": len(result.get("correlations", [])),
+                "top_correlation": result.get("correlations", [None])[0] if result.get("correlations") else None,
+            }
+        )
+        return summary
+
+    if "column_count" in result:
+        summary.update(
+            {
+                "summary_type": "table_profile",
+                "column_count": result["column_count"],
+            }
+        )
+        return summary
+
+    if "columns" in result:
+        summary.update(
+            {
+                "summary_type": "numeric_summary",
+                "numeric_column_count": len(result["columns"]),
+            }
+        )
+        return summary
+
+    return {"summary_type": "unknown", **summary}

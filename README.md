@@ -20,6 +20,7 @@ The project is moving toward a single-machine web application that can scale lat
 - SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
 - Agent runtime dependencies are grouped in an `AnalyticsRuntime` object so the graph receives one explicit context for DB, metadata, LLM, and artifacts.
 - Project chat messages are persisted in DuckDB, and EDA requests can use deterministic Python tools before LLM explanation.
+- The UI shows persisted chat transcript context when a project workspace is opened.
 - Cleaning flows are modeled as auditable draft workflows before cleaned tables are saved, with active draft action history visible in the workspace.
 - While a cleaning draft is active, EDA checks without an explicit table name target the draft table by default.
 - Local LLM default: `qwen2.5` through Ollama.
@@ -121,7 +122,7 @@ For schema/meta questions, the router can call database methods directly and ski
 
 `SQLEngine.run()` is the preferred code entry point for SQL-backed analytical questions. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM. These dependencies are packed into `AnalyticsRuntime`, then the graph returns the final state.
 
-EDA-style requests such as missing-value checks, table profiles, numeric summaries, and correlations are routed through deterministic tools in `tools/eda_tools.py`. The tool computes the result, then the LLM can explain the output; this keeps computation grounded in Python/DuckDB instead of arbitrary generated code.
+EDA-style requests such as missing-value checks, table profiles, numeric summaries, and correlations are routed through deterministic tools in `tools/eda_tools.py`. The tool computes the result, records a compact trace summary, then the LLM can explain the output; this keeps computation grounded in Python/DuckDB instead of arbitrary generated code.
 
 Cleaning is designed as a reviewable workflow: raw tables remain immutable, draft tables hold experiments, every action is logged, and a cleaned table is saved only when the user chooses to keep it.
 
@@ -130,6 +131,8 @@ When a draft cleaning flow is active, EDA requests such as `show missing values`
 The workspace shows the active draft and its cleaning action history, including action type, status, and arguments. Run cards and run history also link to the workflow trace endpoint. This is the first review checkpoint before richer approval flows are added.
 
 Every chat execution also persists run events in `__run_events`. This creates a durable workflow trace separate from chat text, which will later support approvals, replay, and debugging.
+
+Chat execution is centralized in `engine/chat_service.py` so the API and HTMX UI use the same routing, run persistence, event persistence, and message persistence behavior.
 
 The first cleaning-flow tools create and manage the draft lifecycle:
 

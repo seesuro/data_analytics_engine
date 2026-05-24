@@ -92,6 +92,8 @@ def test_chat_api_runs_eda_tool_and_persists_messages(tmp_path):
         registry = DuckDBRegistry(db)
         events = registry.list_run_events(body["run"]["run_id"])
         assert events[0].payload["tool_call"]["tool_name"] == "missing_summary"
+        assert events[0].payload["result_summary"]["summary_type"] == "missing_values"
+        assert events[0].payload["result_summary"]["missing_column_count"] == 0
         assert len(registry.list_chat_messages()) == 2
         assert registry.get_run(body["run"]["run_id"]).tool_call.tool_name == "missing_summary"
     finally:
