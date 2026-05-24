@@ -54,6 +54,27 @@ class ToolName(StrEnum):
     CORRELATION = "correlation"
 
 
+class CleaningFlowStatus(StrEnum):
+    DRAFT = "draft"
+    COMMITTED = "committed"
+    ABORTED = "aborted"
+
+
+class CleaningActionStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class CleaningActionType(StrEnum):
+    START_FLOW = "start_flow"
+    DROP_DUPLICATES = "drop_duplicates"
+    RENAME_COLUMN = "rename_column"
+    IMPUTE_NUMERIC = "impute_numeric"
+    IMPUTE_CATEGORICAL = "impute_categorical"
+    SAVE_CLEANED_TABLE = "save_cleaned_table"
+    DISCARD_DRAFT = "discard_draft"
+
+
 class ContractModel(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
@@ -125,6 +146,40 @@ class ToolCall(ContractModel):
 class ToolResult(ContractModel):
     tool_name: ToolName
     result: dict[str, Any] = Field(default_factory=dict)
+
+
+class CleaningFlow(ContractModel):
+    flow_id: UUID = Field(default_factory=uuid4)
+    project_id: UUID
+    source_table: str
+    draft_table: str
+    status: CleaningFlowStatus = CleaningFlowStatus.DRAFT
+    output_table: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+    completed_at: datetime | None = None
+
+    @field_validator("source_table", "draft_table", "output_table")
+    @classmethod
+    def validate_table_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Table name cannot be empty.")
+        return stripped
+
+
+class CleaningAction(ContractModel):
+    action_id: UUID = Field(default_factory=uuid4)
+    flow_id: UUID
+    action_type: CleaningActionType
+    status: CleaningActionStatus = CleaningActionStatus.SUCCEEDED
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    before_summary: dict[str, Any] = Field(default_factory=dict)
+    after_summary: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+    error: str | None = None
 
 
 class ResultPreview(ContractModel):

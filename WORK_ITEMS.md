@@ -61,5 +61,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add tool call and tool result contracts.
 - [x] Add deterministic EDA tools for table profile, missingness, numeric summary, and correlations.
 - [x] Route EDA-style chat requests through tools before explanation.
-- [ ] Add human-reviewable cleaning and imputation actions.
+- [x] Add cleaning flow and cleaning action audit contracts.
+- [x] Persist cleaning flow and cleaning action audit records.
+- [ ] Add human-reviewable cleaning and imputation tools.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

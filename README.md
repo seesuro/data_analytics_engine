@@ -20,6 +20,7 @@ The project is moving toward a single-machine web application that can scale lat
 - SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
 - Agent runtime dependencies are grouped in an `AnalyticsRuntime` object so the graph receives one explicit context for DB, metadata, LLM, and artifacts.
 - Project chat messages are persisted in DuckDB, and EDA requests can use deterministic Python tools before LLM explanation.
+- Cleaning flows are modeled as auditable draft workflows before cleaned tables are saved.
 - Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
 
@@ -44,7 +45,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `config/`
   - `settings.py`: local paths such as `DB_PATH`, `METADATA_PATH`, and `PROJECTS_ROOT`.
 - `contracts/`
-  - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, and artifacts.
+  - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, artifacts, cleaning flows, and cleaning actions.
 - `engine/`
   - `sql_engine.py`: caller-facing wrapper around the SQL-backed LangGraph workflow.
   - `eda_engine.py`: routes EDA-style requests to deterministic tools and optional LLM explanation.
@@ -59,7 +60,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `project_ingestion.py`: saves raw files into a project folder and ingests them into that project's DuckDB database.
 - `storage/`
   - `db_manager.py`: thin DuckDB wrapper for table creation and queries.
-  - `duckdb_registry.py`: creates and writes project-local registry tables for datasets, tables, runs, and chat messages.
+  - `duckdb_registry.py`: creates and writes project-local registry tables for datasets, tables, runs, chat messages, cleaning flows, and cleaning actions.
   - `project_store.py`: manages project creation, UUID/slug lookup, project directories, and per-project write locks.
 - `tests/`
   - Unit and smoke tests run by `uv run pytest`.
@@ -86,6 +87,8 @@ Each project DuckDB file also owns its registry state:
 - `__tables`: table name, schema JSON, row count, and source dataset.
 - `__runs`: future analysis run records, SQL payloads, result previews, reports, and errors.
 - `__chat_messages`: persisted project chat turns tied to runs when available.
+- `__cleaning_flows`: draft/committed/aborted cleaning workflow records.
+- `__cleaning_actions`: ordered cleaning action audit records with arguments and before/after summaries.
 
 `DuckDBRegistry.metadata()` reconstructs the schema metadata needed by the analysis agent from `__tables`.
 
@@ -115,6 +118,8 @@ For schema/meta questions, the router can call database methods directly and ski
 `SQLEngine.run()` is the preferred code entry point for SQL-backed analytical questions. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM. These dependencies are packed into `AnalyticsRuntime`, then the graph returns the final state.
 
 EDA-style requests such as missing-value checks, table profiles, numeric summaries, and correlations are routed through deterministic tools in `tools/eda_tools.py`. The tool computes the result, then the LLM can explain the output; this keeps computation grounded in Python/DuckDB instead of arbitrary generated code.
+
+Cleaning is designed as a reviewable workflow: raw tables remain immutable, draft tables hold experiments, every action is logged, and a cleaned table is saved only when the user chooses to keep it.
 
 ## Running Locally
 

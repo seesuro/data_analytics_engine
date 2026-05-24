@@ -3,7 +3,24 @@ from uuid import uuid4
 
 import pandas as pd
 
-from contracts import ChatMessage, ChatRole, Dataset, DatasetStatus, ResultPreview, Run, RunStatus, SqlRun, ToolCall, ToolName, ToolResult
+from contracts import (
+    ChatMessage,
+    ChatRole,
+    CleaningAction,
+    CleaningActionStatus,
+    CleaningActionType,
+    CleaningFlow,
+    CleaningFlowStatus,
+    Dataset,
+    DatasetStatus,
+    ResultPreview,
+    Run,
+    RunStatus,
+    SqlRun,
+    ToolCall,
+    ToolName,
+    ToolResult,
+)
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 
@@ -15,8 +32,7 @@ def test_registry_initializes_tables(tmp_path):
         registry.initialize()
 
         tables = {row[0] for row in db.list_tables()}
-        assert {"__datasets", "__tables", "__runs"}.issubset(tables)
-        assert "__chat_messages" in tables
+        assert {"__datasets", "__tables", "__runs", "__chat_messages", "__cleaning_flows", "__cleaning_actions"}.issubset(tables)
     finally:
         db.close()
 
@@ -123,5 +139,63 @@ def test_registry_registers_chat_messages(tmp_path):
         assert messages[0].role == ChatRole.USER
         assert messages[0].content == "show missing values"
         assert messages[0].payload == {"source": "test"}
+    finally:
+        db.close()
+
+
+def test_registry_registers_cleaning_flow_and_actions(tmp_path):
+    db = DBManager(str(tmp_path / "registry.duckdb"))
+    try:
+        project_id = uuid4()
+        flow = CleaningFlow(
+            project_id=project_id,
+            source_table="sales",
+            draft_table="sales_draft_abcd",
+        )
+        action = CleaningAction(
+            flow_id=flow.flow_id,
+            action_type=CleaningActionType.START_FLOW,
+            arguments={"source_table": "sales"},
+            before_summary={"source_table": "sales"},
+            after_summary={"draft_table": "sales_draft_abcd"},
+        )
+
+        registry = DuckDBRegistry(db)
+        registry.register_cleaning_flow(flow)
+        registry.register_cleaning_action(action)
+
+        flows = registry.list_cleaning_flows()
+        actions = registry.list_cleaning_actions(flow.flow_id)
+
+        assert len(flows) == 1
+        assert flows[0].flow_id == flow.flow_id
+        assert flows[0].status == CleaningFlowStatus.DRAFT
+        assert registry.get_cleaning_flow(flow.flow_id).draft_table == "sales_draft_abcd"
+        assert len(actions) == 1
+        assert actions[0].action_type == CleaningActionType.START_FLOW
+        assert actions[0].after_summary == {"draft_table": "sales_draft_abcd"}
+    finally:
+        db.close()
+
+
+def test_registry_registers_failed_cleaning_action(tmp_path):
+    db = DBManager(str(tmp_path / "registry.duckdb"))
+    try:
+        flow = CleaningFlow(project_id=uuid4(), source_table="sales", draft_table="sales_draft_abcd")
+        action = CleaningAction(
+            flow_id=flow.flow_id,
+            action_type=CleaningActionType.IMPUTE_NUMERIC,
+            status=CleaningActionStatus.FAILED,
+            arguments={"column": "revenue", "strategy": "median"},
+            error="Column not found.",
+        )
+
+        registry = DuckDBRegistry(db)
+        registry.register_cleaning_flow(flow)
+        registry.register_cleaning_action(action)
+
+        actions = registry.list_cleaning_actions()
+        assert actions[0].status == CleaningActionStatus.FAILED
+        assert actions[0].error == "Column not found."
     finally:
         db.close()

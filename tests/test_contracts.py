@@ -10,6 +10,11 @@ from contracts import (
     ChatRequest,
     ChatResponse,
     ChatRole,
+    CleaningAction,
+    CleaningActionStatus,
+    CleaningActionType,
+    CleaningFlow,
+    CleaningFlowStatus,
     Dataset,
     DatasetStatus,
     IntentDecision,
@@ -93,6 +98,30 @@ def test_tool_contracts_and_chat_message_validation():
 
     with pytest.raises(ValidationError):
         ChatMessage(project_id=project_id, role=ChatRole.USER, content="")
+
+
+def test_cleaning_flow_and_action_contracts():
+    project_id = uuid4()
+    flow = CleaningFlow(
+        project_id=project_id,
+        source_table="  sales  ",
+        draft_table="sales_draft_abcd",
+    )
+    action = CleaningAction(
+        flow_id=flow.flow_id,
+        action_type=CleaningActionType.DROP_DUPLICATES,
+        arguments={"subset": ["order_id"]},
+        before_summary={"row_count": 10},
+        after_summary={"row_count": 9},
+    )
+
+    assert flow.source_table == "sales"
+    assert flow.status == CleaningFlowStatus.DRAFT
+    assert action.status == CleaningActionStatus.SUCCEEDED
+    assert action.arguments == {"subset": ["order_id"]}
+
+    with pytest.raises(ValidationError):
+        CleaningFlow(project_id=project_id, source_table="", draft_table="draft")
 
 
 def test_chat_request_validates_message_and_preview_limit():

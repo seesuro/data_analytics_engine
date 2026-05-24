@@ -3,7 +3,22 @@ from uuid import UUID
 
 import pandas as pd
 
-from contracts import ChatMessage, ChatRole, Dataset, ResultPreview, Run, RunStatus, SqlRun, ToolCall, ToolResult
+from contracts import (
+    ChatMessage,
+    ChatRole,
+    CleaningAction,
+    CleaningActionStatus,
+    CleaningActionType,
+    CleaningFlow,
+    CleaningFlowStatus,
+    Dataset,
+    ResultPreview,
+    Run,
+    RunStatus,
+    SqlRun,
+    ToolCall,
+    ToolResult,
+)
 from storage.db_manager import DBManager
 
 
@@ -69,6 +84,36 @@ class DuckDBRegistry:
                 created_at TIMESTAMP NOT NULL,
                 run_id VARCHAR,
                 payload_json VARCHAR
+            )
+            """
+        )
+        self.db.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS __cleaning_flows (
+                flow_id VARCHAR PRIMARY KEY,
+                project_id VARCHAR NOT NULL,
+                source_table VARCHAR NOT NULL,
+                draft_table VARCHAR NOT NULL,
+                status VARCHAR NOT NULL,
+                output_table VARCHAR,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                completed_at TIMESTAMP
+            )
+            """
+        )
+        self.db.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS __cleaning_actions (
+                action_id VARCHAR PRIMARY KEY,
+                flow_id VARCHAR NOT NULL,
+                action_type VARCHAR NOT NULL,
+                status VARCHAR NOT NULL,
+                arguments_json VARCHAR NOT NULL,
+                before_summary_json VARCHAR NOT NULL,
+                after_summary_json VARCHAR NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                error VARCHAR
             )
             """
         )
@@ -196,6 +241,89 @@ class DuckDBRegistry:
         rows = self.db.run_query("SELECT * FROM __chat_messages ORDER BY created_at").to_dict(orient="records")
         return [self._row_to_chat_message(row) for row in rows]
 
+    def register_cleaning_flow(self, flow: CleaningFlow) -> None:
+        self.initialize()
+        self.db.conn.execute(
+            """
+            INSERT OR REPLACE INTO __cleaning_flows (
+                flow_id,
+                project_id,
+                source_table,
+                draft_table,
+                status,
+                output_table,
+                created_at,
+                updated_at,
+                completed_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                str(flow.flow_id),
+                str(flow.project_id),
+                flow.source_table,
+                flow.draft_table,
+                flow.status.value,
+                flow.output_table,
+                flow.created_at,
+                flow.updated_at,
+                flow.completed_at,
+            ],
+        )
+
+    def list_cleaning_flows(self) -> list[CleaningFlow]:
+        self.initialize()
+        rows = self.db.run_query("SELECT * FROM __cleaning_flows ORDER BY created_at").to_dict(orient="records")
+        return [self._row_to_cleaning_flow(row) for row in rows]
+
+    def get_cleaning_flow(self, flow_id: str | UUID) -> CleaningFlow:
+        self.initialize()
+        rows = self.db.conn.execute("SELECT * FROM __cleaning_flows WHERE flow_id = ?", [str(flow_id)]).fetchdf()
+        if rows.empty:
+            raise KeyError(f"Cleaning flow not found: {flow_id}")
+        return self._row_to_cleaning_flow(rows.iloc[0].to_dict())
+
+    def register_cleaning_action(self, action: CleaningAction) -> None:
+        self.initialize()
+        self.db.conn.execute(
+            """
+            INSERT OR REPLACE INTO __cleaning_actions (
+                action_id,
+                flow_id,
+                action_type,
+                status,
+                arguments_json,
+                before_summary_json,
+                after_summary_json,
+                created_at,
+                error
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                str(action.action_id),
+                str(action.flow_id),
+                action.action_type.value,
+                action.status.value,
+                json.dumps(action.arguments, sort_keys=True),
+                json.dumps(action.before_summary, sort_keys=True),
+                json.dumps(action.after_summary, sort_keys=True),
+                action.created_at,
+                action.error,
+            ],
+        )
+
+    def list_cleaning_actions(self, flow_id: str | UUID | None = None) -> list[CleaningAction]:
+        self.initialize()
+        if flow_id is None:
+            rows = self.db.run_query("SELECT * FROM __cleaning_actions ORDER BY created_at").to_dict(orient="records")
+        else:
+            rows = self.db.conn.execute(
+                "SELECT * FROM __cleaning_actions WHERE flow_id = ? ORDER BY created_at",
+                [str(flow_id)],
+            ).fetchdf().to_dict(orient="records")
+        return [self._row_to_cleaning_action(row) for row in rows]
+
     def list_datasets(self) -> pd.DataFrame:
         self.initialize()
         return self.db.run_query("SELECT * FROM __datasets ORDER BY uploaded_at")
@@ -261,6 +389,32 @@ class DuckDBRegistry:
             created_at=row["created_at"],
             run_id=row.get("run_id"),
             payload=json.loads(payload_json) if payload_json else {},
+        )
+
+    def _row_to_cleaning_flow(self, row: dict) -> CleaningFlow:
+        return CleaningFlow(
+            flow_id=row["flow_id"],
+            project_id=row["project_id"],
+            source_table=row["source_table"],
+            draft_table=row["draft_table"],
+            status=CleaningFlowStatus(row["status"]),
+            output_table=row.get("output_table"),
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+            completed_at=row.get("completed_at"),
+        )
+
+    def _row_to_cleaning_action(self, row: dict) -> CleaningAction:
+        return CleaningAction(
+            action_id=row["action_id"],
+            flow_id=row["flow_id"],
+            action_type=CleaningActionType(row["action_type"]),
+            status=CleaningActionStatus(row["status"]),
+            arguments=json.loads(row["arguments_json"]) if row.get("arguments_json") else {},
+            before_summary=json.loads(row["before_summary_json"]) if row.get("before_summary_json") else {},
+            after_summary=json.loads(row["after_summary_json"]) if row.get("after_summary_json") else {},
+            created_at=row["created_at"],
+            error=row.get("error"),
         )
 
     def _ensure_column(self, table_name: str, column_name: str, column_type: str) -> None:
