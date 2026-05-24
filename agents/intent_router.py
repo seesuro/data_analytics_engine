@@ -2,8 +2,9 @@
 import json
 
 from contracts import IntentDecision, IntentType
-from utils.debug import debug_state
+from engine.runtime import runtime_from_state
 from llm.llm_factory import resolve_llm
+from utils.debug import debug_state
 
 
 def parse_intent_decision(raw_output: str) -> IntentDecision:
@@ -32,11 +33,12 @@ def parse_intent_decision(raw_output: str) -> IntentDecision:
 
 def intent_router(state):
     query = state["user_query"]
-    db = state["db"]
+    runtime = runtime_from_state(state)
+    db = runtime.db
     debug_state("Intent Router Input", state)
 
     llm = resolve_llm(state)
-    metadata = state.get("metadata", {})
+    metadata = runtime.metadata
     table_names = sorted(metadata.get("tables", {}).keys())
     prompt = f"""
 You classify user requests for a DuckDB analytics assistant.

@@ -1,10 +1,13 @@
 # Planner agent implementation
+from engine.runtime import runtime_from_state
 from llm.llm_factory import resolve_llm
 from utils.debug import debug_state
+
+
 def planner_agent(state):
     llm = resolve_llm(state)
     debug_state("Planner Agent Input", state)
-    metadata = state.get("metadata", {})
+    metadata = runtime_from_state(state).metadata
     prompt = f"""
 You are a senior data analyst planning a DuckDB query.
 

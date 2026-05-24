@@ -2,6 +2,7 @@ import pandas as pd
 
 from agents.sql_agent import sql_agent
 from agents.visualization_agent import visualization_agent
+from engine.runtime import AnalyticsRuntime
 
 
 class _OkDB:
@@ -25,6 +26,16 @@ def test_sql_agent_success_sets_result_and_clears_error():
     assert isinstance(out["result"], pd.DataFrame)
     assert out["sql_error"] is None
     assert out["sql_query"] == "SELECT 1 LIMIT 500"
+    assert db.query == "SELECT 1 LIMIT 500"
+
+
+def test_sql_agent_uses_runtime_db():
+    db = _OkDB()
+    state = {"runtime": AnalyticsRuntime(db=db), "sql_query": "SELECT 1"}
+
+    out = sql_agent(state)
+
+    assert isinstance(out["result"], pd.DataFrame)
     assert db.query == "SELECT 1 LIMIT 500"
 
 
@@ -77,3 +88,13 @@ def test_visualization_agent_saves_chart_artifact(tmp_path):
     assert artifact.artifact_type == "chart"
     assert artifact.mime_type == "image/png"
     assert artifact.path.exists()
+
+
+def test_visualization_agent_saves_chart_artifact_with_runtime(tmp_path):
+    df = pd.DataFrame({"region": ["East", "West"], "revenue": [100, 200]})
+    runtime = AnalyticsRuntime(artifact_dir=tmp_path)
+
+    out = visualization_agent({"result": df, "runtime": runtime})
+
+    assert out["artifacts"] is runtime.artifacts
+    assert len(runtime.artifacts) == 1

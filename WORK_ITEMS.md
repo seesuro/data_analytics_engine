@@ -26,7 +26,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 ## Epic D - Engine Refactor
 
 - [x] Inject LLM dependency directly into agent nodes.
-- [ ] Inject datastore and artifact dependencies directly into agent nodes.
+- [x] Inject datastore and artifact dependencies through a runtime context.
 - [x] Add structured intent decision output parsing.
 - [x] Add structured SQL candidate output parsing.
 - [x] Add a caller-facing engine wrapper for injected DB, metadata, and artifact paths.

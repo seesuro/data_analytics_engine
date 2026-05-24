@@ -2,6 +2,8 @@
 from langchain.chat_models import init_chat_model
 from typing import Any, Optional
 
+from engine.runtime import runtime_from_state
+
 DEFAULT_LOCAL_MODEL = "qwen2.5"
 
 
@@ -30,4 +32,5 @@ def get_llm(provider: str = "local", model: Optional[str] = None):
 
 
 def resolve_llm(state: dict[str, Any]):
-    return state.get("llm") or get_llm()
+    runtime = runtime_from_state(state)
+    return runtime.llm or state.get("llm") or get_llm()

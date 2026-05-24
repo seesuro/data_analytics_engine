@@ -1,5 +1,6 @@
 import json
 
+from engine.runtime import runtime_from_state
 from engine.sql_candidate import parse_sql_candidate
 from llm.llm_factory import resolve_llm
 from utils.debug import debug_state
@@ -9,7 +10,7 @@ def analysis_agent(state):
     llm = resolve_llm(state)
     debug_state("Analysis Agent Input", state)
 
-    metadata = state.get("metadata", {})
+    metadata = runtime_from_state(state).metadata
     metadata_str = json.dumps(metadata, indent=2) if metadata else "No metadata available."
 
     prompt = f"""

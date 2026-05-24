@@ -4,6 +4,7 @@ from typing import TypedDict, Any
 
 class AnalyticsState(TypedDict, total=False):
     user_query: str
+    runtime: Any
     plan: str
     sql_query: str
     sql_candidate: Any

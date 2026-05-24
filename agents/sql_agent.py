@@ -1,11 +1,13 @@
 # SQL execution agent implementation
+from engine.runtime import runtime_from_state
 from engine.sql_policy import SqlPolicyError, apply_sql_policy
 from utils.debug import debug_state
+
 
 def sql_agent(state):
     debug_state("SQL Agent Input", state)
     sql_query = state.get("sql_query")
-    db = state.get("db")
+    db = runtime_from_state(state).db
     if db is not None and sql_query:
         try:
             safe_sql = apply_sql_policy(sql_query)

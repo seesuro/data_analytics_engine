@@ -18,6 +18,7 @@ The project is moving toward a single-machine web application that can scale lat
 - Contracts: Pydantic models in `contracts/` define project, dataset, run, chat, preview, and artifact shapes.
 - Intent routing uses a typed `IntentDecision` contract parsed from LLM JSON output.
 - SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
+- Agent runtime dependencies are grouped in an `AnalyticsRuntime` object so the graph receives one explicit context for DB, metadata, LLM, and artifacts.
 - Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
 
@@ -45,6 +46,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `engine/`
   - `analytics_engine.py`: caller-facing wrapper around the LangGraph workflow.
   - `run_mapper.py`: converts graph state into `ChatResponse` and run records.
+  - `runtime.py`: runtime dependency context for DB, metadata, LLM, artifact directory, and created artifacts.
   - `sql_candidate.py`: parses structured or raw LLM SQL output into a `SqlCandidate`.
   - `sql_policy.py`: SQL guardrails for SELECT-only, single-statement queries with row-limit capping.
 - `graph/`
@@ -106,7 +108,7 @@ For project-aware ingestion, metadata is written to DuckDB registry tables. The 
 
 For schema/meta questions, the router can call database methods directly and skip planning.
 
-`AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM, then returns the final graph state.
+`AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM. These dependencies are packed into `AnalyticsRuntime`, then the graph returns the final state.
 
 ## Running Locally
 
@@ -158,6 +160,7 @@ The examples under `examples/` still show the earlier direct-DuckDB flow. They w
 
 - Keep FastAPI and UI code outside the engine.
 - Keep agents testable with dependency injection.
+- Keep runtime-only dependencies in `AnalyticsRuntime` instead of scattering DB, LLM, and artifact paths across graph state.
 - Keep storage behind small adapters, starting with DuckDB.
 - Keep generated SQL constrained to SELECT-only, single-statement queries.
 - Return previews and artifact references to the UI instead of full dataframes.

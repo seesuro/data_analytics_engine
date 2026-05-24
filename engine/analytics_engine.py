@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+from engine.runtime import AnalyticsRuntime
 from graph.analytics_graph import build_graph
 from state.analytics_state import AnalyticsState
 
@@ -18,17 +19,18 @@ class AnalyticsEngine:
         llm: Any | None = None,
         max_sql_repair_attempts: int = 1,
     ) -> AnalyticsState:
+        runtime = AnalyticsRuntime(
+            db=db,
+            metadata=metadata,
+            artifact_dir=Path(artifact_dir) if artifact_dir is not None else None,
+            llm=llm,
+        )
         state: AnalyticsState = {
             "user_query": question,
-            "db": db,
-            "metadata": metadata,
-            "artifacts": [],
+            "runtime": runtime,
+            "artifacts": runtime.artifacts,
             "sql_repair_attempts": 0,
             "max_sql_repair_attempts": max_sql_repair_attempts,
         }
-        if artifact_dir is not None:
-            state["artifact_dir"] = str(artifact_dir)
-        if llm is not None:
-            state["llm"] = llm
 
         return self.graph.invoke(state)
