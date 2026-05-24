@@ -91,6 +91,19 @@ class SqlRun(ContractModel):
         return stripped
 
 
+class SqlCandidate(ContractModel):
+    sql: str
+    rationale: str | None = None
+
+    @field_validator("sql")
+    @classmethod
+    def validate_sql(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("SQL cannot be empty.")
+        return stripped
+
+
 class ResultPreview(ContractModel):
     columns: list[str] = Field(default_factory=list)
     rows: list[dict[str, Any]] = Field(default_factory=list)

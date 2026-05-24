@@ -11,7 +11,23 @@ class _StubLLM:
         return SimpleNamespace(content=self._content)
 
 
-def test_analysis_agent_strips_sql_code_fences():
-    state = {"plan": "Any plan", "metadata": {"tables": {}}, "llm": _StubLLM("```sql\nSELECT 1 AS one;\n```")}
+def test_analysis_agent_parses_structured_sql_candidate():
+    state = {
+        "plan": "Any plan",
+        "metadata": {"tables": {}},
+        "llm": _StubLLM('{"sql": "SELECT 1 AS one", "rationale": "constant projection"}'),
+    }
+
     out = analysis_agent(state)
+
+    assert out["sql_query"] == "SELECT 1 AS one"
+    assert out["sql_candidate"].sql == "SELECT 1 AS one"
+    assert out["sql_candidate"].rationale == "constant projection"
+
+
+def test_analysis_agent_keeps_raw_sql_fallback():
+    state = {"plan": "Any plan", "metadata": {"tables": {}}, "llm": _StubLLM("```sql\nSELECT 1 AS one;\n```")}
+
+    out = analysis_agent(state)
+
     assert out["sql_query"].strip() == "SELECT 1 AS one;"

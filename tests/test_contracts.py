@@ -18,6 +18,7 @@ from contracts import (
     RunEvent,
     RunEventType,
     RunStatus,
+    SqlCandidate,
     SqlRun,
 )
 
@@ -63,6 +64,16 @@ def test_sql_run_strips_and_rejects_empty_sql():
 
     with pytest.raises(ValidationError):
         SqlRun(sql="   ")
+
+
+def test_sql_candidate_strips_sql_and_keeps_rationale():
+    candidate = SqlCandidate(sql="  SELECT 1  ", rationale="constant projection")
+
+    assert candidate.sql == "SELECT 1"
+    assert candidate.rationale == "constant projection"
+
+    with pytest.raises(ValidationError):
+        SqlCandidate(sql="")
 
 
 def test_chat_request_validates_message_and_preview_limit():

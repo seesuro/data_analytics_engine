@@ -12,6 +12,7 @@ from contracts.models import (
     RunEvent,
     RunEventType,
     RunStatus,
+    SqlCandidate,
     SqlRun,
 )
 
@@ -29,5 +30,6 @@ __all__ = [
     "RunEvent",
     "RunEventType",
     "RunStatus",
+    "SqlCandidate",
     "SqlRun",
 ]

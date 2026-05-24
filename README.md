@@ -17,6 +17,7 @@ The project is moving toward a single-machine web application that can scale lat
 - Identity model: UUIDs for stable internal IDs, plus human-readable project slugs and names.
 - Contracts: Pydantic models in `contracts/` define project, dataset, run, chat, preview, and artifact shapes.
 - Intent routing uses a typed `IntentDecision` contract parsed from LLM JSON output.
+- SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
 - Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
 
@@ -27,7 +28,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `agents/`
   - `intent_router.py`: routes meta/schema questions or analytical questions.
   - `planner_agent.py`: turns a user query into an analysis plan.
-  - `analysis_agent.py`: converts a plan and metadata into one SQL query.
+  - `analysis_agent.py`: converts a plan and metadata into a typed SQL candidate.
   - `sql_agent.py`: executes SQL against DuckDB.
   - `visualization_agent.py`: produces a chart artifact from results when an artifact directory is provided.
   - `reporting_agent.py`: summarizes results with the configured LLM.
@@ -44,6 +45,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `engine/`
   - `analytics_engine.py`: caller-facing wrapper around the LangGraph workflow.
   - `run_mapper.py`: converts graph state into `ChatResponse` and run records.
+  - `sql_candidate.py`: parses structured or raw LLM SQL output into a `SqlCandidate`.
   - `sql_policy.py`: SQL guardrails for SELECT-only, single-statement queries with row-limit capping.
 - `graph/`
   - `analytics_graph.py`: LangGraph workflow wiring.
@@ -93,7 +95,7 @@ planner -> analysis -> sql -> (sql_repair -> sql | viz) -> report
 For analytical questions, the engine:
 
 1. Plans the analysis.
-2. Generates SQL from the plan and metadata.
+2. Generates a typed SQL candidate from the plan and metadata.
 3. Applies SQL policy checks before execution.
 4. Executes the SQL through `DBManager`.
 5. Repairs failed SQL once using the DuckDB error and schema metadata.

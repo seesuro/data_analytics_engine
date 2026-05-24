@@ -6,6 +6,7 @@ class AnalyticsState(TypedDict, total=False):
     user_query: str
     plan: str
     sql_query: str
+    sql_candidate: Any
     result: Any
     report: str
     intent: str

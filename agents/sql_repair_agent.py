@@ -1,5 +1,6 @@
 import json
 
+from engine.sql_candidate import parse_sql_candidate
 from llm.llm_factory import resolve_llm
 from utils.debug import debug_state
 
@@ -31,22 +32,17 @@ DuckDB error:
 {state.get('sql_error', '')}
 
 Rules:
-- Output exactly one corrected DuckDB SELECT query and nothing else.
+- Output exactly one JSON object and nothing else: {{"sql": "<corrected_duckdb_select_query>", "rationale": "<short repair reason>"}}
 - Use only table and column names from the schema metadata.
-- Do not use markdown, comments, prose, code fences, or trailing semicolons.
+- Do not use markdown, code fences, or trailing semicolons.
 - Do not use INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, COPY, PRAGMA, or multiple statements.
 """
 
     response = llm.invoke(prompt)
-    sql_query = response.content.strip()
-    if sql_query.startswith("```sql"):
-        sql_query = sql_query.removeprefix("```sql").strip()
-    if sql_query.startswith("```"):
-        sql_query = sql_query.removeprefix("```").strip()
-    if sql_query.endswith("```"):
-        sql_query = sql_query.removesuffix("```").strip()
+    sql_candidate = parse_sql_candidate(response.content)
 
-    state["sql_query"] = sql_query
+    state["sql_candidate"] = sql_candidate
+    state["sql_query"] = sql_candidate.sql
     state["sql_repair_attempts"] = repair_attempts
     state["sql_error"] = None
     debug_state("SQL Repair Agent Output", state)
