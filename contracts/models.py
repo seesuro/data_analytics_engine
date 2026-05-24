@@ -213,6 +213,7 @@ class Run(ContractModel):
 
 
 class RunEvent(ContractModel):
+    event_id: UUID = Field(default_factory=uuid4)
     run_id: UUID
     event_type: RunEventType
     message: str

@@ -139,6 +139,7 @@ def chat_with_project(
                 ]
             )
         registry.register_run(response.run)
+        registry.register_run_events(response.events)
         registry.register_chat_messages(response.messages)
     finally:
         db.close()

@@ -14,6 +14,8 @@ from contracts import (
     Dataset,
     ResultPreview,
     Run,
+    RunEvent,
+    RunEventType,
     RunStatus,
     SqlRun,
     ToolCall,
@@ -74,6 +76,18 @@ class DuckDBRegistry:
         )
         self._ensure_column("__runs", "tool_call_json", "VARCHAR")
         self._ensure_column("__runs", "tool_result_json", "VARCHAR")
+        self.db.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS __run_events (
+                event_id VARCHAR PRIMARY KEY,
+                run_id VARCHAR NOT NULL,
+                event_type VARCHAR NOT NULL,
+                message VARCHAR NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                payload_json VARCHAR NOT NULL
+            )
+            """
+        )
         self.db.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS __chat_messages (
@@ -206,6 +220,34 @@ class DuckDBRegistry:
             ],
         )
 
+    def register_run_event(self, event: RunEvent) -> None:
+        self.initialize()
+        self.db.conn.execute(
+            """
+            INSERT OR REPLACE INTO __run_events (
+                event_id,
+                run_id,
+                event_type,
+                message,
+                created_at,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                str(event.event_id),
+                str(event.run_id),
+                event.event_type.value,
+                event.message,
+                event.created_at,
+                json.dumps(event.payload, sort_keys=True),
+            ],
+        )
+
+    def register_run_events(self, events: list[RunEvent]) -> None:
+        for event in events:
+            self.register_run_event(event)
+
     def register_chat_message(self, message: ChatMessage) -> None:
         self.initialize()
         self.db.conn.execute(
@@ -336,6 +378,17 @@ class DuckDBRegistry:
         self.initialize()
         return self.db.run_query("SELECT * FROM __runs ORDER BY created_at")
 
+    def list_run_events(self, run_id: str | UUID | None = None) -> list[RunEvent]:
+        self.initialize()
+        if run_id is None:
+            rows = self.db.run_query("SELECT * FROM __run_events ORDER BY created_at").to_dict(orient="records")
+        else:
+            rows = self.db.conn.execute(
+                "SELECT * FROM __run_events WHERE run_id = ? ORDER BY created_at",
+                [str(run_id)],
+            ).fetchdf().to_dict(orient="records")
+        return [self._row_to_run_event(row) for row in rows]
+
     def get_run(self, run_id: str | UUID) -> Run:
         self.initialize()
         rows = self.db.conn.execute("SELECT * FROM __runs WHERE run_id = ?", [str(run_id)]).fetchdf()
@@ -388,6 +441,17 @@ class DuckDBRegistry:
             content=row["content"],
             created_at=row["created_at"],
             run_id=row.get("run_id"),
+            payload=json.loads(payload_json) if payload_json else {},
+        )
+
+    def _row_to_run_event(self, row: dict) -> RunEvent:
+        payload_json = row.get("payload_json")
+        return RunEvent(
+            event_id=row["event_id"],
+            run_id=row["run_id"],
+            event_type=RunEventType(row["event_type"]),
+            message=row["message"],
+            created_at=row["created_at"],
             payload=json.loads(payload_json) if payload_json else {},
         )
 

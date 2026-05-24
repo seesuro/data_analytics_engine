@@ -15,6 +15,8 @@ from contracts import (
     DatasetStatus,
     ResultPreview,
     Run,
+    RunEvent,
+    RunEventType,
     RunStatus,
     SqlRun,
     ToolCall,
@@ -32,7 +34,7 @@ def test_registry_initializes_tables(tmp_path):
         registry.initialize()
 
         tables = {row[0] for row in db.list_tables()}
-        assert {"__datasets", "__tables", "__runs", "__chat_messages", "__cleaning_flows", "__cleaning_actions"}.issubset(tables)
+        assert {"__datasets", "__tables", "__runs", "__run_events", "__chat_messages", "__cleaning_flows", "__cleaning_actions"}.issubset(tables)
     finally:
         db.close()
 
@@ -115,6 +117,31 @@ def test_registry_registers_run(tmp_path):
         assert json.loads(runs.loc[0, "result_preview_json"])["columns"] == ["one"]
         assert json.loads(runs.loc[0, "tool_call_json"])["tool_name"] == "table_profile"
         assert registry.get_run(run.run_id).tool_result.result == {"row_count": 1}
+    finally:
+        db.close()
+
+
+def test_registry_registers_run_events(tmp_path):
+    db = DBManager(str(tmp_path / "registry.duckdb"))
+    try:
+        run = Run(project_id=uuid4(), question="show missing values", status=RunStatus.SUCCEEDED)
+        event = RunEvent(
+            run_id=run.run_id,
+            event_type=RunEventType.COMPLETED,
+            message="EDA tool completed.",
+            payload={"tool_name": "missing_summary"},
+        )
+
+        registry = DuckDBRegistry(db)
+        registry.register_run(run)
+        registry.register_run_event(event)
+
+        events = registry.list_run_events(run.run_id)
+        assert len(events) == 1
+        assert events[0].event_id == event.event_id
+        assert events[0].run_id == run.run_id
+        assert events[0].event_type == RunEventType.COMPLETED
+        assert events[0].payload == {"tool_name": "missing_summary"}
     finally:
         db.close()
 

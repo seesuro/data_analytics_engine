@@ -56,8 +56,11 @@ def test_chat_api_runs_engine_and_persists_run(tmp_path):
     try:
         registry = DuckDBRegistry(db)
         runs = registry.list_runs()
+        events = registry.list_run_events()
         messages = registry.list_chat_messages()
         assert len(runs) == 1
+        assert len(events) == 1
+        assert events[0].message == "Run completed."
         assert runs.loc[0, "status"] == "succeeded"
         assert [message.role.value for message in messages] == ["user", "assistant"]
     finally:
@@ -87,6 +90,8 @@ def test_chat_api_runs_eda_tool_and_persists_messages(tmp_path):
     db = DBManager(str(store.project_db_path(project)))
     try:
         registry = DuckDBRegistry(db)
+        events = registry.list_run_events(body["run"]["run_id"])
+        assert events[0].payload["tool_call"]["tool_name"] == "missing_summary"
         assert len(registry.list_chat_messages()) == 2
         assert registry.get_run(body["run"]["run_id"]).tool_call.tool_name == "missing_summary"
     finally:

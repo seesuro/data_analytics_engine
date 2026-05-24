@@ -89,6 +89,7 @@ Each project DuckDB file also owns its registry state:
 - `__datasets`: uploaded file metadata, content hashes, status, raw path, and ingestion errors.
 - `__tables`: table name, schema JSON, row count, and source dataset.
 - `__runs`: future analysis run records, SQL payloads, result previews, reports, and errors.
+- `__run_events`: durable workflow events emitted by SQL, EDA, and cleaning runs.
 - `__chat_messages`: persisted project chat turns tied to runs when available.
 - `__cleaning_flows`: draft/committed/aborted cleaning workflow records.
 - `__cleaning_actions`: ordered cleaning action audit records with arguments and before/after summaries.
@@ -127,6 +128,8 @@ Cleaning is designed as a reviewable workflow: raw tables remain immutable, draf
 When a draft cleaning flow is active, EDA requests such as `show missing values`, `profile table`, or `show correlations` default to the draft table. Users can still name a raw table explicitly when they want to inspect the original source.
 
 The workspace shows the active draft and its cleaning action history, including action type, status, and arguments. This is the first review checkpoint before richer approval flows are added.
+
+Every chat execution also persists run events in `__run_events`. This creates a durable workflow trace separate from chat text, which will later support approvals, replay, and debugging.
 
 The first cleaning-flow tools create and manage the draft lifecycle:
 
