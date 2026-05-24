@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Request, status
 
 from contracts import ChatMessage, ChatRequest, ChatResponse, ChatRole
-from engine.analytics_engine import AnalyticsEngine
 from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
+from engine.sql_engine import SQLEngine
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
@@ -38,7 +38,7 @@ def chat(payload: ChatRequest, request: Request) -> ChatResponse:
                 llm=request.app.state.llm,
             )
         else:
-            state = AnalyticsEngine().run(
+            state = SQLEngine().run(
                 question=payload.message,
                 db=db,
                 metadata=metadata,

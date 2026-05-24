@@ -5,7 +5,7 @@ These examples use the current project-aware architecture:
 - `ProjectStore` creates an isolated project under `var/example_projects/`.
 - `ProjectIngestionService` copies the raw file into the project and loads it into that project's DuckDB database.
 - `DuckDBRegistry` stores dataset/table/run metadata inside the project database.
-- `AnalyticsEngine` runs the LangGraph workflow with injected DB, metadata, artifact directory, and LLM.
+- `SQLEngine` runs the SQL-backed LangGraph workflow with injected DB, metadata, artifact directory, and LLM.
 
 Run from the repository root:
 

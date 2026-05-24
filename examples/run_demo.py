@@ -6,8 +6,8 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from engine.analytics_engine import AnalyticsEngine
 from engine.run_mapper import state_to_chat_response
+from engine.sql_engine import SQLEngine
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
@@ -46,7 +46,7 @@ def main() -> None:
             ]
         )
 
-        state = AnalyticsEngine().run(
+        state = SQLEngine().run(
             question=question,
             db=db,
             metadata=registry.metadata(),

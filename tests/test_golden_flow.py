@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from engine.analytics_engine import AnalyticsEngine
+from engine.sql_engine import SQLEngine
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
@@ -48,7 +48,7 @@ def test_golden_upload_to_answer_flow(tmp_path, monkeypatch):
             ]
         )
 
-        out = AnalyticsEngine().run(
+        out = SQLEngine().run(
             "What is total revenue by region?",
             db=db,
             metadata=metadata,

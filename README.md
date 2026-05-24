@@ -35,7 +35,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `visualization_agent.py`: produces a chart artifact from results when an artifact directory is provided.
   - `reporting_agent.py`: summarizes results with the configured LLM.
 - `app/`
-  - `routes/chat.py`: in-process chat/run endpoint backed by `AnalyticsEngine`.
+  - `routes/chat.py`: in-process chat/run endpoint backed by `SQLEngine` and `EDAEngine`.
   - `main.py`: FastAPI app factory.
   - `routes/datasets.py`: dataset upload endpoint backed by project-aware ingestion.
   - `routes/projects.py`: project create, list, and lookup endpoints.
@@ -46,7 +46,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `contracts/`
   - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, and artifacts.
 - `engine/`
-  - `analytics_engine.py`: caller-facing wrapper around the LangGraph workflow.
+  - `sql_engine.py`: caller-facing wrapper around the SQL-backed LangGraph workflow.
   - `eda_engine.py`: routes EDA-style requests to deterministic tools and optional LLM explanation.
   - `run_mapper.py`: converts graph state into `ChatResponse` and run records.
   - `runtime.py`: runtime dependency context for DB, metadata, LLM, artifact directory, and created artifacts.
@@ -112,7 +112,7 @@ For project-aware ingestion, metadata is written to DuckDB registry tables. The 
 
 For schema/meta questions, the router can call database methods directly and skip planning.
 
-`AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM. These dependencies are packed into `AnalyticsRuntime`, then the graph returns the final state.
+`SQLEngine.run()` is the preferred code entry point for SQL-backed analytical questions. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM. These dependencies are packed into `AnalyticsRuntime`, then the graph returns the final state.
 
 EDA-style requests such as missing-value checks, table profiles, numeric summaries, and correlations are routed through deterministic tools in `tools/eda_tools.py`. The tool computes the result, then the LLM can explain the output; this keeps computation grounded in Python/DuckDB instead of arbitrary generated code.
 

@@ -6,7 +6,7 @@ from graph.analytics_graph import build_graph
 from state.analytics_state import AnalyticsState
 
 
-class AnalyticsEngine:
+class SQLEngine:
     def __init__(self, graph: Any | None = None):
         self.graph = graph or build_graph()
 

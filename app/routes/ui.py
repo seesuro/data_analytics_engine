@@ -7,9 +7,9 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse
 
-from engine.analytics_engine import AnalyticsEngine
 from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
+from engine.sql_engine import SQLEngine
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
@@ -101,7 +101,7 @@ def chat_with_project(
                 llm=request.app.state.llm,
             )
         else:
-            state = AnalyticsEngine().run(
+            state = SQLEngine().run(
                 question=message,
                 db=db,
                 metadata=metadata,
