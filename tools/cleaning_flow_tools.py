@@ -55,6 +55,73 @@ def preview_cleaning_flow(db, registry: DuckDBRegistry, flow_id: str | UUID) -> 
     }
 
 
+def drop_duplicate_rows(db, registry: DuckDBRegistry, flow_id: str | UUID, subset: list[str] | None = None) -> CleaningFlow:
+    flow = registry.get_cleaning_flow(flow_id)
+    _ensure_draft_flow(flow)
+    _ensure_table_exists(db, flow.draft_table)
+    before_summary = _table_summary(db, flow.draft_table)
+    subset = subset or list(before_summary["columns"])
+    _ensure_columns_exist(before_summary["columns"], subset)
+
+    temp_table = f"{flow.draft_table}_dedup_tmp"
+    partition_by = ", ".join(_quote_identifier(column) for column in subset)
+    order_by = ", ".join(_quote_identifier(column) for column in before_summary["columns"])
+    db.conn.execute(
+        f"""
+        CREATE TABLE {_quote_identifier(temp_table)} AS
+        SELECT * EXCLUDE (__row_number)
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (PARTITION BY {partition_by} ORDER BY {order_by}) AS __row_number
+            FROM {_quote_identifier(flow.draft_table)}
+        )
+        WHERE __row_number = 1
+        """
+    )
+    db.conn.execute(f"DROP TABLE {_quote_identifier(flow.draft_table)}")
+    db.conn.execute(f"ALTER TABLE {_quote_identifier(temp_table)} RENAME TO {_quote_identifier(flow.draft_table)}")
+
+    updated_flow = _touch_flow(flow)
+    registry.register_cleaning_flow(updated_flow)
+    registry.register_cleaning_action(
+        CleaningAction(
+            flow_id=flow.flow_id,
+            action_type=CleaningActionType.DROP_DUPLICATES,
+            arguments={"subset": subset},
+            before_summary=before_summary,
+            after_summary=_table_summary(db, flow.draft_table),
+        )
+    )
+    return updated_flow
+
+
+def rename_column(db, registry: DuckDBRegistry, flow_id: str | UUID, old_name: str, new_name: str) -> CleaningFlow:
+    flow = registry.get_cleaning_flow(flow_id)
+    _ensure_draft_flow(flow)
+    _ensure_table_exists(db, flow.draft_table)
+    before_summary = _table_summary(db, flow.draft_table)
+    _ensure_columns_exist(before_summary["columns"], [old_name])
+    _ensure_safe_new_column(before_summary["columns"], new_name)
+
+    db.conn.execute(
+        f"ALTER TABLE {_quote_identifier(flow.draft_table)} RENAME COLUMN {_quote_identifier(old_name)} TO {_quote_identifier(new_name)}"
+    )
+
+    updated_flow = _touch_flow(flow)
+    registry.register_cleaning_flow(updated_flow)
+    registry.register_cleaning_action(
+        CleaningAction(
+            flow_id=flow.flow_id,
+            action_type=CleaningActionType.RENAME_COLUMN,
+            arguments={"old_name": old_name, "new_name": new_name},
+            before_summary=before_summary,
+            after_summary=_table_summary(db, flow.draft_table),
+        )
+    )
+    return updated_flow
+
+
 def save_cleaned_table(
     db,
     registry: DuckDBRegistry,
@@ -119,6 +186,10 @@ def discard_cleaning_flow(db, registry: DuckDBRegistry, flow_id: str | UUID, dro
     return updated_flow
 
 
+def _touch_flow(flow: CleaningFlow) -> CleaningFlow:
+    return flow.model_copy(update={"updated_at": datetime.now(UTC)})
+
+
 def _ensure_draft_flow(flow: CleaningFlow) -> None:
     if flow.status != CleaningFlowStatus.DRAFT:
         raise ValueError(f"Cleaning flow is not draft: {flow.status}")
@@ -143,6 +214,18 @@ def _table_summary(db, table_name: str) -> dict:
         "row_count": _row_count(db, table_name),
         "columns": _table_schema(db, table_name),
     }
+
+
+def _ensure_columns_exist(columns: dict[str, str], requested_columns: list[str]) -> None:
+    missing = [column for column in requested_columns if column not in columns]
+    if missing:
+        raise ValueError(f"Column not found: {', '.join(missing)}")
+
+
+def _ensure_safe_new_column(columns: dict[str, str], new_name: str) -> None:
+    _quote_identifier(new_name)
+    if new_name in columns:
+        raise ValueError(f"Column already exists: {new_name}")
 
 
 def _row_count(db, table_name: str) -> int:

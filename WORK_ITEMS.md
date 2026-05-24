@@ -64,5 +64,6 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Add cleaning flow and cleaning action audit contracts.
 - [x] Persist cleaning flow and cleaning action audit records.
 - [x] Add draft cleaning flow lifecycle tools.
-- [ ] Add human-reviewable cleaning and imputation tools.
+- [x] Add first draft mutation tools for duplicate removal and column rename.
+- [ ] Add human-reviewable imputation tools.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

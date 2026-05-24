@@ -125,6 +125,8 @@ The first cleaning-flow tools create and manage the draft lifecycle:
 
 - `start_cleaning_flow`: copies a source table into a draft table and records the start action.
 - `preview_cleaning_flow`: returns source/draft summaries plus action history.
+- `drop_duplicate_rows`: removes duplicate records from the draft table and logs before/after row counts.
+- `rename_column`: renames a column in the draft table and logs before/after schema summaries.
 - `save_cleaned_table`: copies the draft into the next cleaned table version and marks the flow committed.
 - `discard_cleaning_flow`: marks the flow aborted and drops the draft table by default.
 
