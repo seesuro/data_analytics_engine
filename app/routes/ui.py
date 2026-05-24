@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse
 
+from engine.cleaning_engine import CleaningEngine
 from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
 from engine.sql_engine import SQLEngine
@@ -91,8 +92,17 @@ def chat_with_project(
     try:
         registry = DuckDBRegistry(db)
         metadata = registry.metadata()
+        cleaning_engine = CleaningEngine()
         eda_engine = EDAEngine()
-        if eda_engine.can_handle(message, metadata):
+        if cleaning_engine.can_handle(message, metadata):
+            response = cleaning_engine.run(
+                message=message,
+                project_id=project.project_id,
+                db=db,
+                registry=registry,
+                metadata=metadata,
+            )
+        elif eda_engine.can_handle(message, metadata):
             response = eda_engine.run(
                 message=message,
                 project_id=project.project_id,

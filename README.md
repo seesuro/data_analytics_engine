@@ -47,6 +47,7 @@ Runtime project data under `var/` is intentionally ignored by git.
 - `contracts/`
   - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, artifacts, cleaning flows, and cleaning actions.
 - `engine/`
+  - `cleaning_engine.py`: routes deterministic cleaning chat commands to draft-table workflow tools.
   - `sql_engine.py`: caller-facing wrapper around the SQL-backed LangGraph workflow.
   - `eda_engine.py`: routes EDA-style requests to deterministic tools and optional LLM explanation.
   - `run_mapper.py`: converts graph state into `ChatResponse` and run records.
@@ -131,6 +132,16 @@ The first cleaning-flow tools create and manage the draft lifecycle:
 - `impute_categorical`: fills missing categorical values using `mode` or `constant`.
 - `save_cleaned_table`: copies the draft into the next cleaned table version and marks the flow committed.
 - `discard_cleaning_flow`: marks the flow aborted and drops the draft table by default.
+
+Cleaning commands are currently deterministic chat commands, for example:
+
+- `start cleaning sales`
+- `drop duplicates by order_id`
+- `rename revenue to net_revenue`
+- `impute numeric revenue median`
+- `impute categorical region constant Unknown`
+- `save cleaned table as sales_cleaned_review`
+- `discard cleaning draft`
 
 ## Running Locally
 
