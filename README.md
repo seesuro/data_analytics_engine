@@ -127,7 +127,7 @@ Cleaning is designed as a reviewable workflow: raw tables remain immutable, draf
 
 When a draft cleaning flow is active, EDA requests such as `show missing values`, `profile table`, or `show correlations` default to the draft table. Users can still name a raw table explicitly when they want to inspect the original source.
 
-The workspace shows the active draft and its cleaning action history, including action type, status, and arguments. This is the first review checkpoint before richer approval flows are added.
+The workspace shows the active draft and its cleaning action history, including action type, status, and arguments. Run cards and run history also link to the workflow trace endpoint. This is the first review checkpoint before richer approval flows are added.
 
 Every chat execution also persists run events in `__run_events`. This creates a durable workflow trace separate from chat text, which will later support approvals, replay, and debugging.
 

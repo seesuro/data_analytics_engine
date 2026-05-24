@@ -83,6 +83,7 @@ def test_ui_chat_returns_run_card(tmp_path):
     assert "East generated 100 and West generated 200." in response.text
     assert "SELECT region, SUM(revenue)" in response.text
     assert "<img src=" in response.text
+    assert "Open workflow trace" in response.text
 
 
 def test_ui_chat_returns_eda_tool_card(tmp_path):
@@ -145,3 +146,4 @@ def test_ui_workspace_shows_active_cleaning_draft(tmp_path):
     assert "Cleaning Action History" in response.text
     assert "start_flow" in response.text
     assert "drop_duplicates" in response.text
+    assert "Open workflow trace" in response.text

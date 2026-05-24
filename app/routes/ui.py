@@ -329,7 +329,7 @@ def _run_history(project_slug: str, runs: list[dict]) -> str:
         f'<div class="card"><h3>{_e(run["question"])}</h3>'
         f'<p class="muted">Status: {_e(run["status"])}</p>'
         f'{_tool_badge(run)}'
-        f'<a href="/projects/{_e(project_slug)}/runs/{_e(run["run_id"])}">Open run JSON</a></div>'
+        f'{_run_links(project_slug, run["run_id"])}</div>'
         for run in reversed(runs[-5:])
     )
 
@@ -349,8 +349,20 @@ def _run_card(project_slug: str, run) -> str:
   {_tool_result_table(run.tool_result)}
   {preview}
   {artifacts}
+  {_run_links(project_slug, run.run_id)}
 </div>
 """
+
+
+def _run_links(project_slug: str, run_id) -> str:
+    escaped_slug = _e(project_slug)
+    escaped_run_id = _e(run_id)
+    return (
+        f'<p class="muted">'
+        f'<a href="/projects/{escaped_slug}/runs/{escaped_run_id}">Open run JSON</a>'
+        f' · <a href="/projects/{escaped_slug}/runs/{escaped_run_id}/trace">Open workflow trace</a>'
+        f"</p>"
+    )
 
 
 def _preview_table(preview) -> str:
