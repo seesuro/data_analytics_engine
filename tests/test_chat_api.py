@@ -30,7 +30,7 @@ def test_chat_api_runs_engine_and_persists_run(tmp_path):
 
     llm = _StubLLM(
         [
-            "analysis",
+            '{"intent": "analysis", "table_name": null}',
             "Aggregate revenue by region.",
             "SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region ORDER BY region",
             "Done.",

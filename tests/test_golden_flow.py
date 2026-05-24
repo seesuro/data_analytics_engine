@@ -40,7 +40,7 @@ def test_golden_upload_to_answer_flow(tmp_path, monkeypatch):
 
         llm = _StubLLM(
             [
-                "analysis",
+                '{"intent": "analysis", "table_name": null}',
                 "Aggregate revenue by region.",
                 "SELECT region, SUM(revenue) AS total_revenue "
                 "FROM sales GROUP BY region ORDER BY region",

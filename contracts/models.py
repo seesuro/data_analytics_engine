@@ -35,6 +35,12 @@ class RunEventType(StrEnum):
     COMPLETED = "completed"
 
 
+class IntentType(StrEnum):
+    LIST_TABLES = "list_tables"
+    DESCRIBE_TABLE = "describe_table"
+    ANALYSIS = "analysis"
+
+
 class ContractModel(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
@@ -138,3 +144,8 @@ class ChatRequest(ContractModel):
 class ChatResponse(ContractModel):
     run: Run
     events: list[RunEvent] = Field(default_factory=list)
+
+
+class IntentDecision(ContractModel):
+    intent: IntentType
+    table_name: str | None = None

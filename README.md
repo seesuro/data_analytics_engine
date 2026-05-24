@@ -16,6 +16,7 @@ The project is moving toward a single-machine web application that can scale lat
 - Project layout: `var/projects/<project_id>/db.duckdb`, `raw/`, and `artifacts/`.
 - Identity model: UUIDs for stable internal IDs, plus human-readable project slugs and names.
 - Contracts: Pydantic models in `contracts/` define project, dataset, run, chat, preview, and artifact shapes.
+- Intent routing uses a typed `IntentDecision` contract parsed from LLM JSON output.
 - Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
 

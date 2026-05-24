@@ -10,6 +10,8 @@ from contracts import (
     ChatResponse,
     Dataset,
     DatasetStatus,
+    IntentDecision,
+    IntentType,
     Project,
     ResultPreview,
     Run,
@@ -113,3 +115,10 @@ def test_run_response_serializes_nested_contracts(tmp_path):
 def test_contracts_forbid_extra_fields(tmp_path):
     with pytest.raises(ValidationError):
         Project(project_slug="demo", project_name="Demo", path=tmp_path, unknown=True)
+
+
+def test_intent_decision_contract():
+    decision = IntentDecision(intent=IntentType.DESCRIBE_TABLE, table_name="sales")
+
+    assert decision.intent == IntentType.DESCRIBE_TABLE
+    assert decision.table_name == "sales"

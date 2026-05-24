@@ -27,7 +27,7 @@ def _prepare_project_with_run(tmp_path):
 
     llm = _StubLLM(
         [
-            "analysis",
+            '{"intent": "analysis", "table_name": null}',
             "Aggregate revenue by region.",
             "SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region ORDER BY region",
             "Done.",

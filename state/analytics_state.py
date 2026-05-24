@@ -9,6 +9,7 @@ class AnalyticsState(TypedDict, total=False):
     result: Any
     report: str
     intent: str
+    intent_decision: Any
     sql_error: str
     sql_repair_attempts: int
     max_sql_repair_attempts: int

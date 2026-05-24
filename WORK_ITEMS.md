@@ -27,6 +27,7 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 
 - [x] Inject LLM dependency directly into agent nodes.
 - [ ] Inject datastore and artifact dependencies directly into agent nodes.
+- [x] Add structured intent decision output parsing.
 - [x] Add a caller-facing engine wrapper for injected DB, metadata, and artifact paths.
 - [x] Make visualization create artifacts or chart specs instead of calling `plt.show()`.
 - [x] Add SQL policy checks: SELECT-only, single statement, and row limits.

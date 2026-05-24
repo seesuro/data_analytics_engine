@@ -40,7 +40,7 @@ def test_graph_runs_analysis_path(monkeypatch):
         "user_query": "total revenue by region",
         "db": _StubDB(),
         "metadata": {"tables": {}},
-        "llm": _StubLLM(["analysis", "plan", "SELECT 1", "summary"]),
+        "llm": _StubLLM(['{"intent": "analysis", "table_name": null}', "plan", "SELECT 1", "summary"]),
     }
     out = graph.invoke(state)
 
@@ -68,7 +68,7 @@ def test_graph_repairs_failed_sql(monkeypatch):
         "metadata": {"tables": {"sales": {"columns": {"region": "VARCHAR", "revenue": "BIGINT"}}}},
         "llm": _StubLLM(
             [
-                "analysis",
+                '{"intent": "analysis", "table_name": null}',
                 "plan",
                 "SELECT bad_column FROM sales",
                 "SELECT region, SUM(revenue) AS revenue FROM sales GROUP BY region",
