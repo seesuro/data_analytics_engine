@@ -19,6 +19,7 @@ The project is moving toward a single-machine web application that can scale lat
 - Intent routing uses a typed `IntentDecision` contract parsed from LLM JSON output.
 - SQL generation and SQL repair use a typed `SqlCandidate` contract parsed from LLM JSON output, with raw-SQL fallback for older prompts/tests.
 - Agent runtime dependencies are grouped in an `AnalyticsRuntime` object so the graph receives one explicit context for DB, metadata, LLM, and artifacts.
+- Project chat messages are persisted in DuckDB, and EDA requests can use deterministic Python tools before LLM explanation.
 - Local LLM default: `qwen2.5` through Ollama.
 - Quality gate: `uv run pytest` runs tests with coverage and fails below 90%.
 
@@ -46,6 +47,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `models.py`: Pydantic contracts for projects, datasets, runs, chat responses, SQL runs, previews, and artifacts.
 - `engine/`
   - `analytics_engine.py`: caller-facing wrapper around the LangGraph workflow.
+  - `eda_engine.py`: routes EDA-style requests to deterministic tools and optional LLM explanation.
   - `run_mapper.py`: converts graph state into `ChatResponse` and run records.
   - `runtime.py`: runtime dependency context for DB, metadata, LLM, artifact directory, and created artifacts.
   - `sql_candidate.py`: parses structured or raw LLM SQL output into a `SqlCandidate`.
@@ -57,7 +59,7 @@ Runtime project data under `var/` is intentionally ignored by git.
   - `project_ingestion.py`: saves raw files into a project folder and ingests them into that project's DuckDB database.
 - `storage/`
   - `db_manager.py`: thin DuckDB wrapper for table creation and queries.
-  - `duckdb_registry.py`: creates and writes project-local registry tables for datasets, tables, and runs.
+  - `duckdb_registry.py`: creates and writes project-local registry tables for datasets, tables, runs, and chat messages.
   - `project_store.py`: manages project creation, UUID/slug lookup, project directories, and per-project write locks.
 - `tests/`
   - Unit and smoke tests run by `uv run pytest`.
@@ -83,6 +85,7 @@ Each project DuckDB file also owns its registry state:
 - `__datasets`: uploaded file metadata, content hashes, status, raw path, and ingestion errors.
 - `__tables`: table name, schema JSON, row count, and source dataset.
 - `__runs`: future analysis run records, SQL payloads, result previews, reports, and errors.
+- `__chat_messages`: persisted project chat turns tied to runs when available.
 
 `DuckDBRegistry.metadata()` reconstructs the schema metadata needed by the analysis agent from `__tables`.
 
@@ -110,6 +113,8 @@ For project-aware ingestion, metadata is written to DuckDB registry tables. The 
 For schema/meta questions, the router can call database methods directly and skip planning.
 
 `AnalyticsEngine.run()` is the preferred code entry point for future API routes. It accepts a user question, a database adapter, metadata, an optional artifact directory, and an optional injected LLM. These dependencies are packed into `AnalyticsRuntime`, then the graph returns the final state.
+
+EDA-style requests such as missing-value checks, table profiles, numeric summaries, and correlations are routed through deterministic tools in `tools/eda_tools.py`. The tool computes the result, then the LLM can explain the output; this keeps computation grounded in Python/DuckDB instead of arbitrary generated code.
 
 ## Running Locally
 
@@ -150,6 +155,7 @@ Current API endpoints:
 - `GET /projects/{project_id_or_slug}`
 - `POST /projects/{project_id_or_slug}/datasets`
 - `POST /chat`
+- `GET /projects/{project_id_or_slug}/messages`
 - `GET /projects/{project_id_or_slug}/runs`
 - `GET /projects/{project_id_or_slug}/runs/{run_id}`
 - `GET /projects/{project_id_or_slug}/artifacts/{filename}`
@@ -184,4 +190,5 @@ Generated example projects are stored under `var/example_projects/`, which is ig
 - Keep runtime-only dependencies in `AnalyticsRuntime` instead of scattering DB, LLM, and artifact paths across graph state.
 - Keep storage behind small adapters, starting with DuckDB.
 - Keep generated SQL constrained to SELECT-only, single-statement queries.
+- Prefer deterministic Python/DuckDB tools for EDA and cleaning operations; use the LLM for tool selection, explanation, and next-step suggestions.
 - Return previews and artifact references to the UI instead of full dataframes.

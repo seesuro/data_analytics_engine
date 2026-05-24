@@ -35,10 +35,23 @@ class RunEventType(StrEnum):
     COMPLETED = "completed"
 
 
+class ChatRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
+
 class IntentType(StrEnum):
     LIST_TABLES = "list_tables"
     DESCRIBE_TABLE = "describe_table"
     ANALYSIS = "analysis"
+
+
+class ToolName(StrEnum):
+    TABLE_PROFILE = "table_profile"
+    MISSING_SUMMARY = "missing_summary"
+    NUMERIC_SUMMARY = "numeric_summary"
+    CORRELATION = "correlation"
 
 
 class ContractModel(BaseModel):
@@ -104,6 +117,16 @@ class SqlCandidate(ContractModel):
         return stripped
 
 
+class ToolCall(ContractModel):
+    tool_name: ToolName
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolResult(ContractModel):
+    tool_name: ToolName
+    result: dict[str, Any] = Field(default_factory=dict)
+
+
 class ResultPreview(ContractModel):
     columns: list[str] = Field(default_factory=list)
     rows: list[dict[str, Any]] = Field(default_factory=list)
@@ -127,6 +150,8 @@ class Run(ContractModel):
     completed_at: datetime | None = None
     sql_run: SqlRun | None = None
     result_preview: ResultPreview | None = None
+    tool_call: ToolCall | None = None
+    tool_result: ToolResult | None = None
     report: str | None = None
     artifacts: list[ArtifactRef] = Field(default_factory=list)
     error: str | None = None
@@ -138,6 +163,24 @@ class RunEvent(ContractModel):
     message: str
     created_at: datetime = Field(default_factory=utc_now)
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatMessage(ContractModel):
+    message_id: UUID = Field(default_factory=uuid4)
+    project_id: UUID
+    role: ChatRole
+    content: str
+    created_at: datetime = Field(default_factory=utc_now)
+    run_id: UUID | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Chat message content cannot be empty.")
+        return stripped
 
 
 class ChatRequest(ContractModel):
@@ -157,6 +200,7 @@ class ChatRequest(ContractModel):
 class ChatResponse(ContractModel):
     run: Run
     events: list[RunEvent] = Field(default_factory=list)
+    messages: list[ChatMessage] = Field(default_factory=list)
 
 
 class IntentDecision(ContractModel):

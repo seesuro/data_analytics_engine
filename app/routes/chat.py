@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Request, status
 
-from contracts import ChatRequest, ChatResponse
+from contracts import ChatMessage, ChatRequest, ChatResponse, ChatRole
 from engine.analytics_engine import AnalyticsEngine
+from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
@@ -26,20 +27,43 @@ def chat(payload: ChatRequest, request: Request) -> ChatResponse:
     db = DBManager(str(store.project_db_path(project)))
     try:
         registry = DuckDBRegistry(db)
-        state = AnalyticsEngine().run(
-            question=payload.message,
-            db=db,
-            metadata=registry.metadata(),
-            artifact_dir=store.artifacts_dir(project),
-            llm=request.app.state.llm,
-        )
-        response = state_to_chat_response(
-            state=state,
-            project_id=project.project_id,
-            question=payload.message,
-            preview_limit=payload.preview_limit,
-        )
+        metadata = registry.metadata()
+        eda_engine = EDAEngine()
+        if eda_engine.can_handle(payload.message, metadata):
+            response = eda_engine.run(
+                message=payload.message,
+                project_id=project.project_id,
+                db=db,
+                metadata=metadata,
+                llm=request.app.state.llm,
+            )
+        else:
+            state = AnalyticsEngine().run(
+                question=payload.message,
+                db=db,
+                metadata=metadata,
+                artifact_dir=store.artifacts_dir(project),
+                llm=request.app.state.llm,
+            )
+            response = state_to_chat_response(
+                state=state,
+                project_id=project.project_id,
+                question=payload.message,
+                preview_limit=payload.preview_limit,
+            )
+            response.messages.extend(
+                [
+                    ChatMessage(project_id=project.project_id, role=ChatRole.USER, content=payload.message, run_id=response.run.run_id),
+                    ChatMessage(
+                        project_id=project.project_id,
+                        role=ChatRole.ASSISTANT,
+                        content=response.run.report or response.run.error or "No response generated.",
+                        run_id=response.run.run_id,
+                    ),
+                ]
+            )
         registry.register_run(response.run)
+        registry.register_chat_messages(response.messages)
         return response
     finally:
         db.close()

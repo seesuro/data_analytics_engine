@@ -1,7 +1,9 @@
 from contracts.models import (
     ArtifactRef,
+    ChatMessage,
     ChatRequest,
     ChatResponse,
+    ChatRole,
     Dataset,
     DatasetStatus,
     IntentDecision,
@@ -14,12 +16,17 @@ from contracts.models import (
     RunStatus,
     SqlCandidate,
     SqlRun,
+    ToolCall,
+    ToolName,
+    ToolResult,
 )
 
 __all__ = [
     "ArtifactRef",
+    "ChatMessage",
     "ChatRequest",
     "ChatResponse",
+    "ChatRole",
     "Dataset",
     "DatasetStatus",
     "IntentDecision",
@@ -32,4 +39,7 @@ __all__ = [
     "RunStatus",
     "SqlCandidate",
     "SqlRun",
+    "ToolCall",
+    "ToolName",
+    "ToolResult",
 ]

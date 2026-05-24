@@ -83,3 +83,22 @@ def test_ui_chat_returns_run_card(tmp_path):
     assert "East generated 100 and West generated 200." in response.text
     assert "SELECT region, SUM(revenue)" in response.text
     assert "<img src=" in response.text
+
+
+def test_ui_chat_returns_eda_tool_card(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "sales.csv"
+    source.write_text("Order ID,Region,Revenue\n1,East,100\n2,West,200\n", encoding="utf-8")
+    ProjectIngestionService(store).ingest_file(project.project_slug, source)
+    client = TestClient(create_app(store))
+
+    response = client.post(
+        f"/ui/projects/{project.project_slug}/chat",
+        data={"message": "Show missing values in sales"},
+    )
+
+    assert response.status_code == 200
+    assert "Tool:" in response.text
+    assert "missing_summary" in response.text
+    assert "missing_count" in response.text

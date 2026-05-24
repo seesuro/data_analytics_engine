@@ -54,3 +54,12 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Configure `uv run pytest` with coverage reporting.
 - [x] Fail tests when total coverage is below 90%.
 - [x] Add end-to-end golden tests for upload to answer flow.
+
+## Epic H - Agentic EDA Workspace
+
+- [x] Persist project chat messages in DuckDB.
+- [x] Add tool call and tool result contracts.
+- [x] Add deterministic EDA tools for table profile, missingness, numeric summary, and correlations.
+- [x] Route EDA-style chat requests through tools before explanation.
+- [ ] Add human-reviewable cleaning and imputation actions.
+- [ ] Add richer EDA workflow traces and approval checkpoints.

@@ -54,9 +54,41 @@ def test_chat_api_runs_engine_and_persists_run(tmp_path):
 
     db = DBManager(str(store.project_db_path(project)))
     try:
-        runs = DuckDBRegistry(db).list_runs()
+        registry = DuckDBRegistry(db)
+        runs = registry.list_runs()
+        messages = registry.list_chat_messages()
         assert len(runs) == 1
         assert runs.loc[0, "status"] == "succeeded"
+        assert [message.role.value for message in messages] == ["user", "assistant"]
+    finally:
+        db.close()
+
+
+def test_chat_api_runs_eda_tool_and_persists_messages(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "sales.csv"
+    source.write_text("Order ID,Region,Revenue\n1,East,100\n2,West,200\n", encoding="utf-8")
+    ProjectIngestionService(store).ingest_file(project.project_slug, source)
+
+    client = TestClient(create_app(store))
+    response = client.post(
+        "/chat",
+        json={"project_id": str(project.project_id), "message": "Show missing values in sales"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["run"]["tool_call"]["tool_name"] == "missing_summary"
+    assert body["run"]["tool_result"]["result"]["table_name"] == "sales"
+    assert body["messages"][0]["role"] == "user"
+    assert body["messages"][1]["role"] == "assistant"
+
+    db = DBManager(str(store.project_db_path(project)))
+    try:
+        registry = DuckDBRegistry(db)
+        assert len(registry.list_chat_messages()) == 2
+        assert registry.get_run(body["run"]["run_id"]).tool_call.tool_name == "missing_summary"
     finally:
         db.close()
 

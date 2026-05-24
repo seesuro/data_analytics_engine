@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Path, Request, status
 from fastapi.responses import FileResponse
 
-from contracts import Run
+from contracts import ChatMessage, Run
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
@@ -27,6 +27,21 @@ def list_runs(project_id_or_slug: Annotated[str, Path(min_length=1)], request: R
     db = DBManager(str(store.project_db_path(project)))
     try:
         return DuckDBRegistry(db).list_runs().to_dict(orient="records")
+    finally:
+        db.close()
+
+
+@router.get("/messages", response_model=list[ChatMessage])
+def list_messages(project_id_or_slug: Annotated[str, Path(min_length=1)], request: Request) -> list[ChatMessage]:
+    store = get_project_store(request)
+    try:
+        project = store.get_project(project_id_or_slug)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    db = DBManager(str(store.project_db_path(project)))
+    try:
+        return DuckDBRegistry(db).list_chat_messages()
     finally:
         db.close()
 

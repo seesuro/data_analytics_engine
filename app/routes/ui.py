@@ -8,11 +8,13 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, s
 from fastapi.responses import HTMLResponse
 
 from engine.analytics_engine import AnalyticsEngine
+from engine.eda_engine import EDAEngine
 from engine.run_mapper import state_to_chat_response
 from ingestion.project_ingestion import ProjectIngestionService
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 from storage.project_store import ProjectStore
+from contracts import ChatMessage, ChatRole
 
 
 router = APIRouter(tags=["ui"])
@@ -88,20 +90,43 @@ def chat_with_project(
     db = DBManager(str(store.project_db_path(project)))
     try:
         registry = DuckDBRegistry(db)
-        state = AnalyticsEngine().run(
-            question=message,
-            db=db,
-            metadata=registry.metadata(),
-            artifact_dir=store.artifacts_dir(project),
-            llm=request.app.state.llm,
-        )
-        response = state_to_chat_response(
-            state=state,
-            project_id=project.project_id,
-            question=message,
-            preview_limit=25,
-        )
+        metadata = registry.metadata()
+        eda_engine = EDAEngine()
+        if eda_engine.can_handle(message, metadata):
+            response = eda_engine.run(
+                message=message,
+                project_id=project.project_id,
+                db=db,
+                metadata=metadata,
+                llm=request.app.state.llm,
+            )
+        else:
+            state = AnalyticsEngine().run(
+                question=message,
+                db=db,
+                metadata=metadata,
+                artifact_dir=store.artifacts_dir(project),
+                llm=request.app.state.llm,
+            )
+            response = state_to_chat_response(
+                state=state,
+                project_id=project.project_id,
+                question=message,
+                preview_limit=25,
+            )
+            response.messages.extend(
+                [
+                    ChatMessage(project_id=project.project_id, role=ChatRole.USER, content=message, run_id=response.run.run_id),
+                    ChatMessage(
+                        project_id=project.project_id,
+                        role=ChatRole.ASSISTANT,
+                        content=response.run.report or response.run.error or "No response generated.",
+                        run_id=response.run.run_id,
+                    ),
+                ]
+            )
         registry.register_run(response.run)
+        registry.register_chat_messages(response.messages)
     finally:
         db.close()
 
@@ -247,6 +272,7 @@ def _run_history(project_slug: str, runs: list[dict]) -> str:
     return "".join(
         f'<div class="card"><h3>{_e(run["question"])}</h3>'
         f'<p class="muted">Status: {_e(run["status"])}</p>'
+        f'{_tool_badge(run)}'
         f'<a href="/projects/{_e(project_slug)}/runs/{_e(run["run_id"])}">Open run JSON</a></div>'
         for run in reversed(runs[-5:])
     )
@@ -261,8 +287,10 @@ def _run_card(project_slug: str, run) -> str:
     return f"""
 <div class="card">
   <h3>{_e(run.question)}</h3>
+  {_tool_badge(run.model_dump(mode="json"))}
   <p>{_e(run.report or run.error or "No report generated.")}</p>
   {_sql(run)}
+  {_tool_result_table(run.tool_result)}
   {preview}
   {artifacts}
 </div>
@@ -284,6 +312,44 @@ def _sql(run) -> str:
     if not run.sql_run:
         return ""
     return f"<p class=\"muted\"><code>{_e(run.sql_run.sql)}</code></p>"
+
+
+def _tool_badge(run: dict) -> str:
+    tool_call = run.get("tool_call")
+    if isinstance(tool_call, str):
+        return ""
+    if not tool_call:
+        return ""
+    return f'<p class="muted">Tool: <code>{_e(tool_call.get("tool_name", ""))}</code></p>'
+
+
+def _tool_result_table(tool_result) -> str:
+    if not tool_result:
+        return ""
+    result = tool_result.result
+    if "columns" in result and isinstance(result["columns"], list):
+        rows = result["columns"]
+        if not rows:
+            return '<p class="muted">Tool returned no column-level rows.</p>'
+        keys = list(rows[0].keys())
+        headers = "".join(f"<th>{_e(key)}</th>" for key in keys)
+        body = "".join(
+            "<tr>" + "".join(f"<td>{_e(row.get(key, ''))}</td>" for key in keys) + "</tr>"
+            for row in rows
+        )
+        return f"<table><thead><tr>{headers}</tr></thead><tbody>{body}</tbody></table>"
+    if "correlations" in result:
+        rows = result["correlations"]
+        if not rows:
+            return '<p class="muted">No correlations available.</p>'
+        keys = ["left", "right", "correlation"]
+        headers = "".join(f"<th>{_e(key)}</th>" for key in keys)
+        body = "".join(
+            "<tr>" + "".join(f"<td>{_e(row.get(key, ''))}</td>" for key in keys) + "</tr>"
+            for row in rows
+        )
+        return f"<table><thead><tr>{headers}</tr></thead><tbody>{body}</tbody></table>"
+    return ""
 
 
 def _dataset_notice(dataset) -> str:

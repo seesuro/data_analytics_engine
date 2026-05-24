@@ -55,6 +55,10 @@ def test_runs_api_lists_and_fetches_runs(tmp_path):
     assert fetched.json()["run_id"] == run["run_id"]
     assert fetched.json()["status"] == "succeeded"
 
+    messages = client.get(f"/projects/{project.project_slug}/messages")
+    assert messages.status_code == 200
+    assert [message["role"] for message in messages.json()] == ["user", "assistant"]
+
 
 def test_runs_api_serves_artifact(tmp_path):
     _store, project, client, run = _prepare_project_with_run(tmp_path)

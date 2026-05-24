@@ -3,7 +3,7 @@ from uuid import UUID
 
 import pandas as pd
 
-from contracts import Dataset, ResultPreview, Run, RunStatus, SqlRun
+from contracts import ChatMessage, ChatRole, Dataset, ResultPreview, Run, RunStatus, SqlRun, ToolCall, ToolResult
 from storage.db_manager import DBManager
 
 
@@ -48,10 +48,27 @@ class DuckDBRegistry:
                 status VARCHAR NOT NULL,
                 sql_json VARCHAR,
                 result_preview_json VARCHAR,
+                tool_call_json VARCHAR,
+                tool_result_json VARCHAR,
                 report VARCHAR,
                 error VARCHAR,
                 created_at TIMESTAMP NOT NULL,
                 completed_at TIMESTAMP
+            )
+            """
+        )
+        self._ensure_column("__runs", "tool_call_json", "VARCHAR")
+        self._ensure_column("__runs", "tool_result_json", "VARCHAR")
+        self.db.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS __chat_messages (
+                message_id VARCHAR PRIMARY KEY,
+                project_id VARCHAR NOT NULL,
+                role VARCHAR NOT NULL,
+                content VARCHAR NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                run_id VARCHAR,
+                payload_json VARCHAR
             )
             """
         )
@@ -119,12 +136,14 @@ class DuckDBRegistry:
                 status,
                 sql_json,
                 result_preview_json,
+                tool_call_json,
+                tool_result_json,
                 report,
                 error,
                 created_at,
                 completed_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 str(run.run_id),
@@ -133,12 +152,49 @@ class DuckDBRegistry:
                 run.status.value,
                 run.sql_run.model_dump_json() if run.sql_run else None,
                 run.result_preview.model_dump_json() if run.result_preview else None,
+                run.tool_call.model_dump_json() if run.tool_call else None,
+                run.tool_result.model_dump_json() if run.tool_result else None,
                 run.report,
                 run.error,
                 run.created_at,
                 run.completed_at,
             ],
         )
+
+    def register_chat_message(self, message: ChatMessage) -> None:
+        self.initialize()
+        self.db.conn.execute(
+            """
+            INSERT OR REPLACE INTO __chat_messages (
+                message_id,
+                project_id,
+                role,
+                content,
+                created_at,
+                run_id,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                str(message.message_id),
+                str(message.project_id),
+                message.role.value,
+                message.content,
+                message.created_at,
+                str(message.run_id) if message.run_id else None,
+                json.dumps(message.payload, sort_keys=True),
+            ],
+        )
+
+    def register_chat_messages(self, messages: list[ChatMessage]) -> None:
+        for message in messages:
+            self.register_chat_message(message)
+
+    def list_chat_messages(self) -> list[ChatMessage]:
+        self.initialize()
+        rows = self.db.run_query("SELECT * FROM __chat_messages ORDER BY created_at").to_dict(orient="records")
+        return [self._row_to_chat_message(row) for row in rows]
 
     def list_datasets(self) -> pd.DataFrame:
         self.initialize()
@@ -178,6 +234,8 @@ class DuckDBRegistry:
     def _row_to_run(self, row: dict) -> Run:
         sql_json = row.get("sql_json")
         result_preview_json = row.get("result_preview_json")
+        tool_call_json = row.get("tool_call_json")
+        tool_result_json = row.get("tool_result_json")
         return Run(
             run_id=row["run_id"],
             project_id=row["project_id"],
@@ -185,8 +243,30 @@ class DuckDBRegistry:
             status=RunStatus(row["status"]),
             sql_run=SqlRun.model_validate_json(sql_json) if sql_json else None,
             result_preview=ResultPreview.model_validate_json(result_preview_json) if result_preview_json else None,
+            tool_call=ToolCall.model_validate_json(tool_call_json) if tool_call_json else None,
+            tool_result=ToolResult.model_validate_json(tool_result_json) if tool_result_json else None,
             report=row.get("report"),
             error=row.get("error"),
             created_at=row["created_at"],
             completed_at=row.get("completed_at"),
         )
+
+    def _row_to_chat_message(self, row: dict) -> ChatMessage:
+        payload_json = row.get("payload_json")
+        return ChatMessage(
+            message_id=row["message_id"],
+            project_id=row["project_id"],
+            role=ChatRole(row["role"]),
+            content=row["content"],
+            created_at=row["created_at"],
+            run_id=row.get("run_id"),
+            payload=json.loads(payload_json) if payload_json else {},
+        )
+
+    def _ensure_column(self, table_name: str, column_name: str, column_type: str) -> None:
+        columns = {
+            row["name"]
+            for row in self.db.conn.execute(f"PRAGMA table_info('{table_name}')").fetchdf().to_dict(orient="records")
+        }
+        if column_name not in columns:
+            self.db.conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")

@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pandas as pd
 
-from contracts import Dataset, DatasetStatus, ResultPreview, Run, RunStatus, SqlRun
+from contracts import ChatMessage, ChatRole, Dataset, DatasetStatus, ResultPreview, Run, RunStatus, SqlRun, ToolCall, ToolName, ToolResult
 from storage.db_manager import DBManager
 from storage.duckdb_registry import DuckDBRegistry
 
@@ -16,6 +16,7 @@ def test_registry_initializes_tables(tmp_path):
 
         tables = {row[0] for row in db.list_tables()}
         assert {"__datasets", "__tables", "__runs"}.issubset(tables)
+        assert "__chat_messages" in tables
     finally:
         db.close()
 
@@ -83,6 +84,8 @@ def test_registry_registers_run(tmp_path):
             status=RunStatus.SUCCEEDED,
             sql_run=SqlRun(sql="SELECT 1", row_count=1),
             result_preview=ResultPreview(columns=["one"], rows=[{"one": 1}], row_count=1),
+            tool_call=ToolCall(tool_name=ToolName.TABLE_PROFILE, arguments={"table_name": "sales"}),
+            tool_result=ToolResult(tool_name=ToolName.TABLE_PROFILE, result={"row_count": 1}),
             report="Done.",
         )
 
@@ -94,5 +97,31 @@ def test_registry_registers_run(tmp_path):
         assert runs.loc[0, "status"] == "succeeded"
         assert json.loads(runs.loc[0, "sql_json"])["sql"] == "SELECT 1"
         assert json.loads(runs.loc[0, "result_preview_json"])["columns"] == ["one"]
+        assert json.loads(runs.loc[0, "tool_call_json"])["tool_name"] == "table_profile"
+        assert registry.get_run(run.run_id).tool_result.result == {"row_count": 1}
+    finally:
+        db.close()
+
+
+def test_registry_registers_chat_messages(tmp_path):
+    db = DBManager(str(tmp_path / "registry.duckdb"))
+    try:
+        project_id = uuid4()
+        message = ChatMessage(
+            project_id=project_id,
+            role=ChatRole.USER,
+            content="show missing values",
+            payload={"source": "test"},
+        )
+
+        registry = DuckDBRegistry(db)
+        registry.register_chat_message(message)
+
+        messages = registry.list_chat_messages()
+        assert len(messages) == 1
+        assert messages[0].project_id == project_id
+        assert messages[0].role == ChatRole.USER
+        assert messages[0].content == "show missing values"
+        assert messages[0].payload == {"source": "test"}
     finally:
         db.close()
