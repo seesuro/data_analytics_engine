@@ -72,4 +72,5 @@ This file tracks the product build without timeboxed sprints. Keep items small e
 - [x] Persist run events as durable workflow traces.
 - [x] Expose run traces through the API.
 - [x] Link workflow traces from UI run cards and history.
+- [x] Route null-handling questions to cleaning guidance instead of raw EDA summaries.
 - [ ] Add richer EDA workflow traces and approval checkpoints.

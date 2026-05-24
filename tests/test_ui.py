@@ -105,6 +105,25 @@ def test_ui_chat_returns_eda_tool_card(tmp_path):
     assert "missing_count" in response.text
 
 
+def test_ui_chat_returns_null_handling_guidance(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "sales.csv"
+    source.write_text("Order ID,Region,Revenue\n1,East,100\n2,,\n", encoding="utf-8")
+    ProjectIngestionService(store).ingest_file(project.project_slug, source)
+    client = TestClient(create_app(store))
+
+    response = client.post(
+        f"/ui/projects/{project.project_slug}/chat",
+        data={"message": "How should I handle nulls in sales?"},
+    )
+
+    assert response.status_code == 200
+    assert "Suggested next actions" in response.text
+    assert "impute numeric revenue median" in response.text
+    assert "missing_summary" not in response.text
+
+
 def test_ui_chat_returns_cleaning_command_card(tmp_path):
     store = ProjectStore(tmp_path / "projects")
     project = store.create_project("Retail Demo")

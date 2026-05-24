@@ -15,6 +15,7 @@ from tools.cleaning_flow_tools import (
     save_cleaned_table,
     start_cleaning_flow,
 )
+from tools.eda_tools import NUMERIC_TYPES, missing_summary
 
 
 class CleaningEngine:
@@ -76,9 +77,27 @@ class CleaningEngine:
 def _parse_command(message: str, metadata: dict[str, Any]) -> dict | None:
     lowered = message.lower()
     if "clean" not in lowered and not any(
-        keyword in lowered for keyword in ("drop duplicate", "rename", "impute", "save cleaned", "discard draft", "preview draft")
+        keyword in lowered
+        for keyword in (
+            "drop duplicate",
+            "rename",
+            "impute",
+            "save cleaned",
+            "discard draft",
+            "preview draft",
+            "handle null",
+            "handle missing",
+            "treat null",
+            "treat missing",
+            "fix null",
+            "fix missing",
+        )
     ):
         return None
+
+    if _asks_for_missing_value_guidance(lowered):
+        table_name = _mentioned_table(message, metadata) or _first_table(metadata)
+        return {"name": "missing_value_guidance", "table_name": table_name} if table_name else None
 
     if "start" in lowered and "clean" in lowered:
         table_name = _mentioned_table(message, metadata) or _first_table(metadata)
@@ -119,6 +138,9 @@ def _parse_command(message: str, metadata: dict[str, Any]) -> dict | None:
 
 
 def _execute_command(command: dict, db: Any, registry: DuckDBRegistry, project_id: UUID) -> dict:
+    if command["name"] == "missing_value_guidance":
+        return _missing_value_guidance(db, command["table_name"], registry)
+
     if command["name"] == "start":
         flow = start_cleaning_flow(db, registry, project_id, command["table_name"])
         return _flow_result(registry, flow.flow_id)
@@ -182,6 +204,8 @@ def _flow_result(registry: DuckDBRegistry, flow_id: UUID) -> dict:
 
 
 def _report(command_name: str, result: dict) -> str:
+    if command_name == "missing_value_guidance":
+        return _missing_value_guidance_report(result)
     if command_name == "start":
         return f"Started a cleaning draft for {result['source_table']} as {result['draft_table']}."
     if command_name == "preview":
@@ -191,6 +215,69 @@ def _report(command_name: str, result: dict) -> str:
     if command_name == "discard":
         return "Discarded the active cleaning draft."
     return f"Applied {result['latest_action']} to draft table {result['draft_table']}."
+
+
+def _asks_for_missing_value_guidance(lowered: str) -> bool:
+    guidance_terms = ("how", "what should", "suggest", "recommend", "handle", "treat", "fix", "deal with")
+    missing_terms = ("null", "missing", "na", "nan")
+    return any(term in lowered for term in guidance_terms) and any(term in lowered for term in missing_terms)
+
+
+def _missing_value_guidance(db: Any, table_name: str, registry: DuckDBRegistry) -> dict:
+    raw_metadata = registry.metadata()
+    summary = missing_summary(db, raw_metadata, table_name)
+    missing_columns = [column for column in summary["columns"] if column["missing_count"] > 0]
+    recommendations = [
+        _column_recommendation(raw_metadata, table_name, column)
+        for column in missing_columns
+    ]
+    active_draft = next((flow for flow in reversed(registry.list_cleaning_flows()) if flow.status.value == "draft"), None)
+    return {
+        "table_name": table_name,
+        "row_count": summary["row_count"],
+        "missing_columns": missing_columns,
+        "recommendations": recommendations,
+        "active_draft_table": active_draft.draft_table if active_draft else None,
+    }
+
+
+def _column_recommendation(metadata: dict[str, Any], table_name: str, missing_column: dict[str, Any]) -> dict[str, Any]:
+    column_name = missing_column["column"]
+    column_type = str(metadata["tables"][table_name]["columns"][column_name])
+    if column_type.upper().startswith(NUMERIC_TYPES):
+        action = f"impute numeric {column_name} median"
+        rationale = "Numeric columns often start with median imputation because it is robust to outliers."
+    else:
+        action = f"impute categorical {column_name} mode"
+        rationale = "Categorical/text columns often start with mode imputation or a business-specific constant."
+    return {
+        "column": column_name,
+        "missing_count": missing_column["missing_count"],
+        "missing_pct": missing_column["missing_pct"],
+        "column_type": column_type,
+        "suggested_action": action,
+        "rationale": rationale,
+    }
+
+
+def _missing_value_guidance_report(result: dict) -> str:
+    if not result["missing_columns"]:
+        return f"No missing values were found in {result['table_name']}; no null-handling action is needed right now."
+
+    lines = [
+        f"Found missing values in {len(result['missing_columns'])} column(s) of {result['table_name']}.",
+        "Suggested next actions:",
+    ]
+    for recommendation in result["recommendations"][:5]:
+        lines.append(
+            f"- {recommendation['column']}: {recommendation['missing_count']} missing "
+            f"({recommendation['missing_pct']}%). Try `{recommendation['suggested_action']}`."
+        )
+    if result["active_draft_table"] is None:
+        lines.append(f"Start a reviewable draft first with `start cleaning {result['table_name']}` before applying changes.")
+    else:
+        lines.append(f"These actions will apply to active draft `{result['active_draft_table']}` if you run them.")
+    return "\n".join(lines)
 
 
 def _mentioned_table(message: str, metadata: dict[str, Any]) -> str | None:

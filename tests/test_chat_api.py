@@ -130,6 +130,28 @@ def test_chat_api_runs_cleaning_command_and_persists_messages(tmp_path):
         db.close()
 
 
+def test_chat_api_routes_null_handling_questions_to_guidance(tmp_path):
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create_project("Retail Demo")
+    source = tmp_path / "sales.csv"
+    source.write_text("Order ID,Region,Revenue\n1,East,100\n2,,\n", encoding="utf-8")
+    ProjectIngestionService(store).ingest_file(project.project_slug, source)
+
+    client = TestClient(create_app(store))
+    response = client.post(
+        "/chat",
+        json={"project_id": str(project.project_id), "message": "How should I handle nulls in sales?"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["run"]["tool_call"] is None
+    assert "Suggested next actions" in body["run"]["report"]
+    assert "impute numeric revenue median" in body["run"]["report"]
+    assert "start cleaning sales" in body["run"]["report"]
+    assert body["messages"][1]["payload"]["cleaning"]["recommendations"][0]["suggested_action"]
+
+
 def test_chat_api_runs_eda_against_active_cleaning_draft(tmp_path):
     store = ProjectStore(tmp_path / "projects")
     project = store.create_project("Retail Demo")

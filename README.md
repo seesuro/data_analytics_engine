@@ -144,6 +144,7 @@ The first cleaning-flow tools create and manage the draft lifecycle:
 
 Cleaning commands are currently deterministic chat commands, for example:
 
+- `How should I handle nulls in sales?`
 - `start cleaning sales`
 - `drop duplicates by order_id`
 - `rename revenue to net_revenue`
