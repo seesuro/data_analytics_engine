@@ -5,6 +5,8 @@ from uuid import UUID
 from contracts import CleaningAction, CleaningActionType, CleaningFlow, CleaningFlowStatus
 from storage.duckdb_registry import DuckDBRegistry
 
+NUMERIC_TYPES = ("BIGINT", "INTEGER", "DOUBLE", "FLOAT", "DECIMAL", "HUGEINT", "SMALLINT", "TINYINT", "UBIGINT")
+
 
 def start_cleaning_flow(db, registry: DuckDBRegistry, project_id: UUID, source_table: str) -> CleaningFlow:
     _ensure_table_exists(db, source_table)
@@ -122,6 +124,96 @@ def rename_column(db, registry: DuckDBRegistry, flow_id: str | UUID, old_name: s
     return updated_flow
 
 
+def impute_numeric(
+    db,
+    registry: DuckDBRegistry,
+    flow_id: str | UUID,
+    column: str,
+    strategy: str,
+    constant: int | float | None = None,
+) -> CleaningFlow:
+    flow = registry.get_cleaning_flow(flow_id)
+    _ensure_draft_flow(flow)
+    _ensure_table_exists(db, flow.draft_table)
+    before_summary = _table_summary(db, flow.draft_table)
+    _ensure_columns_exist(before_summary["columns"], [column])
+    _ensure_numeric_column(before_summary["columns"], column)
+
+    normalized_strategy = strategy.strip().lower()
+    if normalized_strategy == "mean":
+        fill_value = _aggregate_value(db, flow.draft_table, column, "AVG")
+    elif normalized_strategy == "median":
+        fill_value = _aggregate_value(db, flow.draft_table, column, "MEDIAN")
+    elif normalized_strategy == "constant":
+        if constant is None:
+            raise ValueError("Numeric constant is required for constant imputation.")
+        fill_value = constant
+    else:
+        raise ValueError(f"Unsupported numeric imputation strategy: {strategy}")
+
+    if fill_value is None:
+        raise ValueError(f"No non-null values available to impute numeric column: {column}")
+
+    before_column_summary = _column_missing_summary(db, flow.draft_table, column, before_summary=before_summary)
+    _impute_nulls(db, flow.draft_table, column, fill_value)
+    updated_flow = _touch_flow(flow)
+    registry.register_cleaning_flow(updated_flow)
+    registry.register_cleaning_action(
+        CleaningAction(
+            flow_id=flow.flow_id,
+            action_type=CleaningActionType.IMPUTE_NUMERIC,
+            arguments={"column": column, "strategy": normalized_strategy, "fill_value": fill_value},
+            before_summary=before_column_summary,
+            after_summary=_column_missing_summary(db, flow.draft_table, column),
+        )
+    )
+    return updated_flow
+
+
+def impute_categorical(
+    db,
+    registry: DuckDBRegistry,
+    flow_id: str | UUID,
+    column: str,
+    strategy: str,
+    constant: str | None = None,
+) -> CleaningFlow:
+    flow = registry.get_cleaning_flow(flow_id)
+    _ensure_draft_flow(flow)
+    _ensure_table_exists(db, flow.draft_table)
+    before_summary = _table_summary(db, flow.draft_table)
+    _ensure_columns_exist(before_summary["columns"], [column])
+    _ensure_categorical_column(before_summary["columns"], column)
+
+    normalized_strategy = strategy.strip().lower()
+    if normalized_strategy == "mode":
+        fill_value = _mode_value(db, flow.draft_table, column)
+    elif normalized_strategy == "constant":
+        if constant is None or not constant.strip():
+            raise ValueError("Categorical constant is required for constant imputation.")
+        fill_value = constant
+    else:
+        raise ValueError(f"Unsupported categorical imputation strategy: {strategy}")
+
+    if fill_value is None:
+        raise ValueError(f"No non-null values available to impute categorical column: {column}")
+
+    before_column_summary = _column_missing_summary(db, flow.draft_table, column, before_summary=before_summary)
+    _impute_nulls(db, flow.draft_table, column, fill_value)
+    updated_flow = _touch_flow(flow)
+    registry.register_cleaning_flow(updated_flow)
+    registry.register_cleaning_action(
+        CleaningAction(
+            flow_id=flow.flow_id,
+            action_type=CleaningActionType.IMPUTE_CATEGORICAL,
+            arguments={"column": column, "strategy": normalized_strategy, "fill_value": fill_value},
+            before_summary=before_column_summary,
+            after_summary=_column_missing_summary(db, flow.draft_table, column),
+        )
+    )
+    return updated_flow
+
+
 def save_cleaned_table(
     db,
     registry: DuckDBRegistry,
@@ -226,6 +318,72 @@ def _ensure_safe_new_column(columns: dict[str, str], new_name: str) -> None:
     _quote_identifier(new_name)
     if new_name in columns:
         raise ValueError(f"Column already exists: {new_name}")
+
+
+def _ensure_numeric_column(columns: dict[str, str], column: str) -> None:
+    if not _is_numeric_type(columns[column]):
+        raise ValueError(f"Column is not numeric: {column}")
+
+
+def _ensure_categorical_column(columns: dict[str, str], column: str) -> None:
+    if _is_numeric_type(columns[column]):
+        raise ValueError(f"Column is not categorical: {column}")
+
+
+def _is_numeric_type(column_type: str) -> bool:
+    return str(column_type).upper().startswith(NUMERIC_TYPES)
+
+
+def _aggregate_value(db, table_name: str, column: str, aggregate: str):
+    value = db.run_query(
+        f"SELECT {aggregate}({_quote_identifier(column)}) AS fill_value FROM {_quote_identifier(table_name)}"
+    ).loc[0, "fill_value"]
+    return None if value is None or value != value else float(value)
+
+
+def _mode_value(db, table_name: str, column: str):
+    result = db.run_query(
+        f"""
+        SELECT {_quote_identifier(column)} AS fill_value, COUNT(*) AS frequency
+        FROM {_quote_identifier(table_name)}
+        WHERE {_quote_identifier(column)} IS NOT NULL
+        GROUP BY {_quote_identifier(column)}
+        ORDER BY frequency DESC, fill_value
+        LIMIT 1
+        """
+    )
+    if result.empty:
+        return None
+    return result.loc[0, "fill_value"]
+
+
+def _impute_nulls(db, table_name: str, column: str, fill_value) -> None:
+    db.conn.execute(
+        f"UPDATE {_quote_identifier(table_name)} SET {_quote_identifier(column)} = ? WHERE {_quote_identifier(column)} IS NULL",
+        [fill_value],
+    )
+
+
+def _column_missing_summary(db, table_name: str, column: str, before_summary: dict | None = None) -> dict:
+    table_summary = before_summary or _table_summary(db, table_name)
+    missing_count = int(
+        db.run_query(
+            f"""
+            SELECT SUM(CASE WHEN {_quote_identifier(column)} IS NULL THEN 1 ELSE 0 END) AS missing_count
+            FROM {_quote_identifier(table_name)}
+            """
+        ).loc[0, "missing_count"]
+        or 0
+    )
+    row_count = int(table_summary["row_count"])
+    return {
+        "table_name": table_name,
+        "column": column,
+        "row_count": row_count,
+        "missing_count": missing_count,
+        "missing_pct": round((missing_count / row_count) * 100, 2) if row_count else 0.0,
+        "column_type": table_summary["columns"][column],
+    }
 
 
 def _row_count(db, table_name: str) -> int:
